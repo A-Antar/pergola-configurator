@@ -2,99 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Archivo:wght@400;500;600;700;800&display=swap');
 
 @layer base {
   :root {
-    --background: 30 20% 97%;
-    --foreground: 30 10% 12%;
+    --background: 0 0% 5%;
+    --foreground: 40 10% 92%;
 
-    --card: 30 15% 95%;
-    --card-foreground: 30 10% 12%;
+    --card: 0 0% 9%;
+    --card-foreground: 40 10% 92%;
 
-    --popover: 30 20% 97%;
-    --popover-foreground: 30 10% 12%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 40 10% 92%;
 
-    --primary: 28 60% 42%;
-    --primary-foreground: 30 20% 97%;
+    --primary: 40 52% 56%;
+    --primary-foreground: 0 0% 5%;
 
-    --secondary: 30 12% 90%;
-    --secondary-foreground: 30 10% 20%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 40 10% 85%;
 
-    --muted: 30 10% 92%;
-    --muted-foreground: 30 8% 50%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 55%;
 
-    --accent: 28 45% 55%;
-    --accent-foreground: 30 20% 97%;
+    --accent: 40 52% 56%;
+    --accent-foreground: 0 0% 5%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 12% 88%;
-    --input: 30 12% 88%;
-    --ring: 28 60% 42%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 40 52% 56%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    --wood: 28 60% 42%;
-    --wood-light: 30 40% 70%;
-    --wood-dark: 25 50% 28%;
-    --stone: 30 8% 60%;
-    --sky: 210 40% 92%;
+    --gold: 40 52% 56%;
+    --gold-light: 40 60% 72%;
+    --gold-dark: 38 45% 38%;
 
-    --sidebar-background: 30 15% 95%;
-    --sidebar-foreground: 30 10% 20%;
-    --sidebar-primary: 28 60% 42%;
-    --sidebar-primary-foreground: 30 20% 97%;
-    --sidebar-accent: 30 12% 90%;
-    --sidebar-accent-foreground: 30 10% 20%;
-    --sidebar-border: 30 12% 88%;
-    --sidebar-ring: 28 60% 42%;
-  }
-
-  .dark {
-    --background: 30 10% 8%;
-    --foreground: 30 15% 92%;
-
-    --card: 30 10% 12%;
-    --card-foreground: 30 15% 92%;
-
-    --popover: 30 10% 8%;
-    --popover-foreground: 30 15% 92%;
-
-    --primary: 28 55% 50%;
-    --primary-foreground: 30 10% 8%;
-
-    --secondary: 30 8% 18%;
-    --secondary-foreground: 30 15% 85%;
-
-    --muted: 30 8% 18%;
-    --muted-foreground: 30 10% 55%;
-
-    --accent: 28 45% 55%;
-    --accent-foreground: 30 10% 8%;
-
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 30 8% 20%;
-    --input: 30 8% 20%;
-    --ring: 28 55% 50%;
-
-    --wood: 28 55% 50%;
-    --wood-light: 30 35% 60%;
-    --wood-dark: 25 45% 22%;
-    --stone: 30 6% 45%;
-    --sky: 210 20% 18%;
-
-    --sidebar-background: 30 10% 10%;
-    --sidebar-foreground: 30 15% 85%;
-    --sidebar-primary: 28 55% 50%;
-    --sidebar-primary-foreground: 30 10% 8%;
-    --sidebar-accent: 30 8% 18%;
-    --sidebar-accent-foreground: 30 15% 85%;
-    --sidebar-border: 30 8% 20%;
-    --sidebar-ring: 28 55% 50%;
+    --sidebar-background: 0 0% 7%;
+    --sidebar-foreground: 40 10% 85%;
+    --sidebar-primary: 40 52% 56%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 14%;
+    --sidebar-accent-foreground: 40 10% 85%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 40 52% 56%;
   }
 }
 
@@ -104,11 +57,26 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
-    font-family: 'DM Sans', sans-serif;
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
   }
 
   h1, h2, h3, h4 {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Archivo', sans-serif;
   }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
 }
