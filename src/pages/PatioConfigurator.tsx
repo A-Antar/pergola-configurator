@@ -1,4 +1,4 @@
-import { useState, Suspense } from "react";
+import { useState, useCallback, Suspense } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import PatioScene from "@/components/configurator/PatioScene";
@@ -8,9 +8,22 @@ import LeadCaptureDialog from "@/components/configurator/LeadCaptureDialog";
 import { DEFAULT_PATIO_CONFIG } from "@/types/configurator";
 import type { PatioConfig } from "@/types/configurator";
 
+const PART_TO_STEP: Record<string, number> = {
+  columns: 2,   // Dimensions
+  beams: 2,     // Dimensions
+  roof: 0,      // Material
+  accessories: 4, // Accessories
+};
+
 export default function PatioConfigurator() {
   const [config, setConfig] = useState<PatioConfig>(DEFAULT_PATIO_CONFIG);
   const [quoteOpen, setQuoteOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+
+  const handlePartClick = useCallback((part: string) => {
+    const step = PART_TO_STEP[part];
+    if (step !== undefined) setWizardStep(step);
+  }, []);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isEmbed = searchParams.get('embed') === '1';
@@ -52,14 +65,14 @@ export default function PatioConfigurator() {
               </div>
             }
           >
-            <PatioScene config={config} />
+            <PatioScene config={config} onPartClick={handlePartClick} />
           </Suspense>
         </div>
 
         {/* Side panel */}
         <div className="w-full lg:w-[380px] shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-background flex flex-col max-h-[60vh] lg:max-h-none overflow-hidden">
           <div className="flex-1 overflow-hidden">
-            <ConfigWizard config={config} onChange={setConfig} onGetQuote={() => setQuoteOpen(true)} />
+            <ConfigWizard config={config} onChange={setConfig} onGetQuote={() => setQuoteOpen(true)} activeStep={wizardStep} onStepChange={setWizardStep} />
           </div>
           <div className="shrink-0 px-5 pb-4">
             <QuotePanel config={config} />

@@ -12,12 +12,16 @@ interface ConfigWizardProps {
   config: PatioConfig;
   onChange: (config: PatioConfig) => void;
   onGetQuote: () => void;
+  activeStep?: number;
+  onStepChange?: (step: number) => void;
 }
 
 const STEPS = ['Material', 'Style', 'Dimensions', 'Colour', 'Accessories'];
 
-export default function ConfigWizard({ config, onChange, onGetQuote }: ConfigWizardProps) {
-  const [step, setStep] = useState(0);
+export default function ConfigWizard({ config, onChange, onGetQuote, activeStep, onStepChange }: ConfigWizardProps) {
+  const [internalStep, setInternalStep] = useState(0);
+  const step = activeStep ?? internalStep;
+  const setStep = (s: number) => { setInternalStep(s); onStepChange?.(s); };
 
   const update = (partial: Partial<PatioConfig>) =>
     onChange({ ...config, ...partial });
