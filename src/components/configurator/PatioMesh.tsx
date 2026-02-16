@@ -114,8 +114,8 @@ function Beams({ config, beam, patioType, frameMat }: {
 }) {
   const { width, depth, height } = config;
   const bH = mm(beam.profileHeight);
-  // Visual width: real Pro-beams appear stubby/chunky — use 100mm face width for true-to-eye feel
-  const bW = mm(Math.max(beam.profileWidth, 100));
+  // H2 Patios use 150×150mm beams — true to scale
+  const bW = mm(150);
   const beamY = height - bH / 2;
   const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
 
