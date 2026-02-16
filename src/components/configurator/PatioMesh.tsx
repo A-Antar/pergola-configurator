@@ -114,7 +114,8 @@ function Beams({ config, beam, patioType, frameMat }: {
 }) {
   const { width, depth, height } = config;
   const bH = mm(beam.profileHeight);
-  const bW = mm(beam.profileWidth);
+  // Visual width: real Pro-beams appear stubby/chunky — use 100mm face width for true-to-eye feel
+  const bW = mm(Math.max(beam.profileWidth, 100));
   const beamY = height - bH / 2;
   const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
 
