@@ -1,105 +1,555 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import type { PatioConfig, AttachmentSide } from "@/types/configurator";
+import {
+  selectPatioType,
+  selectBeamForSpan,
+  selectSheet,
+  BRACKETS,
+  DOWNPIPE,
+  type PatioTypeSpec,
+  type BeamSpec,
+  type SheetSpec,
+} from "@/data/stratco-catalog";
 
-const POST_SIZE = 0.1;
-const BEAM_H = 0.12;
-const BEAM_W = 0.06;
-const RAFTER_H = 0.08;
-const RAFTER_W = 0.05;
-const ROOF_THICKNESS = 0.04;
-const GUTTER_SIZE = 0.08;
-const INSULATED_THICKNESS = 0.07;
+/* ── helpers ────────────────────────────────────────────────── */
 
-function makeMat(hex: string, metalness = 0.3, roughness = 0.6) {
+/** mm → metres */
+const mm = (v: number) => v / 1000;
+
+function mat(hex: string, metalness = 0.3, roughness = 0.6) {
   return new THREE.MeshStandardMaterial({ color: new THREE.Color(hex), metalness, roughness });
 }
 
-const groundMat = makeMat('#8a8474', 0, 0.95);
-const wallMat = makeMat('#c8c0b4', 0, 0.9);
-const glassMat = new THREE.MeshPhysicalMaterial({
-  color: new THREE.Color('#88ccff'),
-  transparent: true,
-  opacity: 0.15,
-  roughness: 0.05,
-  metalness: 0.1,
-  transmission: 0.9,
-});
+const groundMat = mat('#a09a8c', 0, 0.95);
+const wallMat = mat('#c8c0b4', 0, 0.9);
+const bracketMat = mat('#555555', 0.6, 0.4);
+
+/* ── component sub-builders (one per build-order stage) ───── */
+
+/** Stage 1 — base plates / footings at each post position */
+function BasePlates({ positions, colSize, frameMat }: {
+  positions: [number, number][]; colSize: number; frameMat: THREE.Material;
+}) {
+  const plateW = mm(BRACKETS.postBracket.width);
+  const plateH = mm(BRACKETS.postBracket.height);
+  return (
+    <>
+      {positions.map(([x, z], i) => (
+        <mesh key={`bp-${i}`} position={[x, plateH / 2, z]} material={bracketMat}>
+          <boxGeometry args={[plateW, plateH, plateW]} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+/** Stage 2 — columns (posts) */
+function Columns({ positions, height, colSize, frameMat, decorative }: {
+  positions: [number, number][]; height: number; colSize: number; frameMat: THREE.Material; decorative: boolean;
+}) {
+  const s = mm(colSize);
+  return (
+    <>
+      {positions.map(([x, z], i) => (
+        <group key={`col-${i}`}>
+          <mesh position={[x, height / 2, z]} material={frameMat} castShadow>
+            <boxGeometry args={[s, height, s]} />
+          </mesh>
+          {/* Post cap */}
+          <mesh position={[x, height, z]} material={bracketMat}>
+            <boxGeometry args={[s + 0.01, mm(BRACKETS.postCap.height), s + 0.01]} />
+          </mesh>
+        </group>
+      ))}
+    </>
+  );
+}
+
+/** Stage 3 — wall brackets on attached sides */
+function WallBrackets({ config, beam, frameMat }: {
+  config: PatioConfig; beam: BeamSpec; frameMat: THREE.Material;
+}) {
+  const { width, depth, height, attachedSides = ['back'] } = config;
+  const hasBack = attachedSides.includes('back');
+  const hasLeft = attachedSides.includes('left');
+  const hasRight = attachedSides.includes('right');
+  const bw = mm(BRACKETS.wallBracket.width);
+  const bh = mm(BRACKETS.wallBracket.height);
+  const bd = mm(BRACKETS.wallBracket.depth);
+  const brackets: JSX.Element[] = [];
+
+  if (hasBack) {
+    // Wall brackets spaced along back wall
+    const count = Math.max(2, Math.ceil(width / 1.8));
+    for (let i = 0; i < count; i++) {
+      const x = -width / 2 + (width / (count - 1)) * i;
+      brackets.push(
+        <mesh key={`wb-b-${i}`} position={[x, height - mm(beam.profileHeight) / 2, -depth / 2 - bd / 2]} material={bracketMat}>
+          <boxGeometry args={[bw, bh, bd]} />
+        </mesh>
+      );
+    }
+  }
+  if (hasLeft) {
+    brackets.push(
+      <mesh key="wb-l" position={[-width / 2 - bd / 2, height - mm(beam.profileHeight) / 2, 0]} material={bracketMat}>
+        <boxGeometry args={[bd, bh, bw]} />
+      </mesh>
+    );
+  }
+  if (hasRight) {
+    brackets.push(
+      <mesh key="wb-r" position={[width / 2 + bd / 2, height - mm(beam.profileHeight) / 2, 0]} material={bracketMat}>
+        <boxGeometry args={[bd, bh, bw]} />
+      </mesh>
+    );
+  }
+  return <>{brackets}</>;
+}
+
+/** Stage 4 — beams (back → sides → front, following real build order) */
+function Beams({ config, beam, patioType, frameMat }: {
+  config: PatioConfig; beam: BeamSpec; patioType: PatioTypeSpec; frameMat: THREE.Material;
+}) {
+  const { width, depth, height } = config;
+  const bH = mm(beam.profileHeight);
+  const bW = mm(beam.profileWidth);
+  const beamY = height - bH / 2;
+  const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
+
+  return (
+    <>
+      {/* Back beam */}
+      <mesh position={[0, beamY, -depth / 2]} material={frameMat} castShadow>
+        <boxGeometry args={[width + bW, bH, bW]} />
+      </mesh>
+      {/* Left side beam */}
+      <mesh position={[-width / 2, beamY, 0]} material={frameMat} castShadow>
+        <boxGeometry args={[bW, bH, depth]} />
+      </mesh>
+      {/* Right side beam */}
+      <mesh position={[width / 2, beamY, 0]} material={frameMat} castShadow>
+        <boxGeometry args={[bW, bH, depth]} />
+      </mesh>
+      {/* Front beam */}
+      <mesh position={[0, beamY, depth / 2 + overhang]} material={frameMat} castShadow>
+        <boxGeometry args={[width + bW, bH, bW]} />
+      </mesh>
+
+      {/* Pro-beam flutes — decorative grooves along beams */}
+      {beam.fluted && (
+        <>
+          {/* Flutes on front beam (3 lines) */}
+          {[0.25, 0.5, 0.75].map((t, fi) => (
+            <mesh key={`flute-f-${fi}`}
+              position={[0, height - bH * t, depth / 2 + overhang + bW / 2 + 0.002]}
+              material={bracketMat}
+            >
+              <boxGeometry args={[width + bW - 0.02, 0.004, 0.004]} />
+            </mesh>
+          ))}
+        </>
+      )}
+
+      {/* Beam-to-beam brackets at corners */}
+      {[
+        [-width / 2, -depth / 2],
+        [width / 2, -depth / 2],
+        [-width / 2, depth / 2 + overhang],
+        [width / 2, depth / 2 + overhang],
+      ].map(([x, z], i) => (
+        <mesh key={`bb-${i}`} position={[x, beamY, z]} material={bracketMat}>
+          <boxGeometry args={[mm(BRACKETS.beamToBeamBracket.width), mm(BRACKETS.beamToBeamBracket.height), bW + 0.01]} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+/** Stage 5 — purlins (Type 3 & 4 only) */
+function Purlins({ config, beam, patioType, frameMat }: {
+  config: PatioConfig; beam: BeamSpec; patioType: PatioTypeSpec; frameMat: THREE.Material;
+}) {
+  if (!patioType.hasPurlins) return null;
+  const { width, depth, height } = config;
+  const bH = mm(beam.profileHeight);
+  const purlinH = bH * 0.6;
+  const purlinW = mm(beam.profileWidth) * 0.8;
+  const purlinY = height - bH - purlinH / 2;
+
+  const purlins: JSX.Element[] = [];
+
+  if (patioType.hasMidPurlin) {
+    // Type 4: one mid-span purlin running depth-wise
+    purlins.push(
+      <mesh key="mid-purlin" position={[0, purlinY, 0]} material={frameMat} castShadow>
+        <boxGeometry args={[purlinW, purlinH, depth + 0.05]} />
+      </mesh>
+    );
+  }
+
+  // Cross purlins along width
+  const spacing = 1.2; // ~1.2m spacing
+  const count = Math.max(2, Math.floor(depth / spacing));
+  for (let i = 0; i <= count; i++) {
+    const z = -depth / 2 + (depth / count) * i;
+    purlins.push(
+      <mesh key={`purlin-${i}`} position={[0, purlinY, z]} material={frameMat} castShadow>
+        <boxGeometry args={[width - 0.02, purlinH, purlinW]} />
+      </mesh>
+    );
+  }
+
+  return <>{purlins}</>;
+}
+
+/** Stage 6 — roof sheets */
+function RoofSheets({ config, beam, sheet, patioType, roofMat }: {
+  config: PatioConfig; beam: BeamSpec; sheet: SheetSpec; patioType: PatioTypeSpec; roofMat: THREE.Material;
+}) {
+  const { width, depth, height, shape } = config;
+  const bH = mm(beam.profileHeight);
+  const sheetThick = sheet.insulated ? mm(sheet.thickness) : 0.004; // Colorbond is thin
+  const roofY = height - bH + sheetThick / 2;
+  const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
+  const totalDepth = depth + overhang;
+  const slopeAngle = config.style === 'skillion' ? 0.06 : 0.025;
+
+  const isGable = shape === 'gable';
+
+  if (isGable) {
+    const gableH = Math.min(width, depth) * 0.18;
+    return <GableRoof width={width} depth={totalDepth} roofY={roofY} gableHeight={gableH} sheetThick={sheetThick} roofMat={roofMat} />;
+  }
+
+  if (config.style === 'skyline') {
+    return (
+      <>
+        <mesh position={[-width / 4 - 0.03, roofY, 0]} rotation={[slopeAngle, 0, 0]} material={roofMat} castShadow>
+          <boxGeometry args={[width / 2 + 0.03, sheetThick, totalDepth + 0.1]} />
+        </mesh>
+        <mesh position={[width / 4 + 0.03, roofY + 0.15, 0]} rotation={[slopeAngle, 0, 0]} material={roofMat} castShadow>
+          <boxGeometry args={[width / 2 + 0.03, sheetThick, totalDepth + 0.1]} />
+        </mesh>
+        {/* Skylight strip */}
+        <mesh position={[0, roofY + 0.08, 0]}>
+          <boxGeometry args={[0.25, 0.01, totalDepth + 0.1]} />
+          <meshPhysicalMaterial color="#88ccff" transparent opacity={0.2} transmission={0.85} roughness={0.05} />
+        </mesh>
+      </>
+    );
+  }
+
+  // Flat / skillion / fly-over
+  return (
+    <>
+      <mesh position={[0, roofY, overhang / 2]} rotation={[slopeAngle, 0, 0]} material={roofMat} castShadow receiveShadow>
+        <boxGeometry args={[width + 0.15, sheetThick, totalDepth + 0.1]} />
+      </mesh>
+
+      {/* Rib detail for superdek or insulated top profile */}
+      {sheet.ribHeight > 0 && (
+        <SheetRibs
+          width={width}
+          depth={totalDepth}
+          roofY={roofY + sheetThick / 2}
+          ribH={mm(sheet.ribHeight)}
+          ribSpacing={mm(sheet.ribSpacing)}
+          roofMat={roofMat}
+          direction={patioType.sheetDirection}
+          slopeAngle={slopeAngle}
+          overhang={overhang}
+        />
+      )}
+
+      {/* Insulated panel smooth underside detail */}
+      {sheet.insulated && (
+        <InsulatedUnderside width={width} depth={totalDepth} roofY={roofY - sheetThick / 2} roofMat={roofMat} slopeAngle={slopeAngle} overhang={overhang} />
+      )}
+    </>
+  );
+}
+
+/** Corrugation / rib lines on roof sheets */
+function SheetRibs({ width, depth, roofY, ribH, ribSpacing, roofMat, direction, slopeAngle, overhang }: {
+  width: number; depth: number; roofY: number; ribH: number; ribSpacing: number;
+  roofMat: THREE.Material; direction: 'depth' | 'width'; slopeAngle: number; overhang: number;
+}) {
+  const ribs: JSX.Element[] = [];
+  if (direction === 'depth') {
+    // Ribs run along depth (standard)
+    const count = Math.floor(width / ribSpacing);
+    for (let i = 0; i <= count; i++) {
+      const x = -width / 2 + i * ribSpacing;
+      ribs.push(
+        <mesh key={`rib-${i}`} position={[x, roofY + ribH / 2, overhang / 2]} rotation={[slopeAngle, 0, 0]} material={roofMat}>
+          <boxGeometry args={[0.015, ribH, depth + 0.08]} />
+        </mesh>
+      );
+    }
+  } else {
+    // Ribs run along width (Type 3 horizontal sheets)
+    const count = Math.floor(depth / ribSpacing);
+    for (let i = 0; i <= count; i++) {
+      const z = -depth / 2 + i * ribSpacing;
+      ribs.push(
+        <mesh key={`rib-${i}`} position={[0, roofY + ribH / 2, z]} material={roofMat}>
+          <boxGeometry args={[width + 0.08, ribH, 0.015]} />
+        </mesh>
+      );
+    }
+  }
+  return <>{ribs}</>;
+}
+
+/** Smooth underside joints for insulated (Cooldek) panels */
+function InsulatedUnderside({ width, depth, roofY, roofMat, slopeAngle, overhang }: {
+  width: number; depth: number; roofY: number; roofMat: THREE.Material; slopeAngle: number; overhang: number;
+}) {
+  const joints: JSX.Element[] = [];
+  const panelWidth = 1.0; // ~1m Cooldek panels
+  const count = Math.floor(width / panelWidth);
+  for (let i = 1; i < count; i++) {
+    const x = -width / 2 + i * panelWidth;
+    joints.push(
+      <mesh key={`ins-j-${i}`} position={[x, roofY - 0.002, overhang / 2]} rotation={[slopeAngle, 0, 0]} material={roofMat}>
+        <boxGeometry args={[0.015, 0.008, depth + 0.08]} />
+      </mesh>
+    );
+  }
+  return <>{joints}</>;
+}
+
+/** Gable roof — two angled slopes + ridge cap */
+function GableRoof({ width, depth, roofY, gableHeight, sheetThick, roofMat }: {
+  width: number; depth: number; roofY: number; gableHeight: number; sheetThick: number; roofMat: THREE.Material;
+}) {
+  const halfW = width / 2;
+  const angle = Math.atan2(gableHeight, halfW);
+  const slopeLen = Math.sqrt(halfW * halfW + gableHeight * gableHeight);
+
+  return (
+    <>
+      <mesh position={[-halfW / 2, roofY + gableHeight / 2, 0]} rotation={[0, 0, angle]} material={roofMat} castShadow receiveShadow>
+        <boxGeometry args={[slopeLen + 0.04, sheetThick, depth + 0.12]} />
+      </mesh>
+      <mesh position={[halfW / 2, roofY + gableHeight / 2, 0]} rotation={[0, 0, -angle]} material={roofMat} castShadow receiveShadow>
+        <boxGeometry args={[slopeLen + 0.04, sheetThick, depth + 0.12]} />
+      </mesh>
+      {/* Ridge cap */}
+      <mesh position={[0, roofY + gableHeight + sheetThick, 0]} material={roofMat}>
+        <boxGeometry args={[0.06, 0.025, depth + 0.15]} />
+      </mesh>
+      {/* Gable end infills (triangular approximation) */}
+      {[-1, 1].map((side) => (
+        <mesh key={`gable-end-${side}`} position={[0, roofY + gableHeight * 0.4, (depth / 2 + 0.06) * side]} material={roofMat}>
+          <boxGeometry args={[width * 0.7, gableHeight * 0.6, 0.01]} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+/** Stage 7 — gutters & downpipes */
+function GuttersAndDownpipes({ config, beam, patioType, frameMat }: {
+  config: PatioConfig; beam: BeamSpec; patioType: PatioTypeSpec; frameMat: THREE.Material;
+}) {
+  if (!config.accessories.gutters) return null;
+  const { width, depth, height } = config;
+  const bH = mm(beam.profileHeight);
+  const gutterW = 0.115;
+  const gutterH = 0.075;
+  const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
+  const frontZ = depth / 2 + overhang;
+  const gutterY = height - bH - gutterH / 2;
+
+  return (
+    <>
+      {/* Front gutter */}
+      <mesh position={[0, gutterY, frontZ + gutterW / 2]} material={frameMat}>
+        <boxGeometry args={[width + 0.15, gutterH, gutterW]} />
+      </mesh>
+      {/* Downpipes at corners */}
+      {[-width / 2, width / 2].map((x, i) => (
+        <group key={`dp-${i}`}>
+          <mesh position={[x, height / 2 - bH / 2, frontZ + gutterW]} material={frameMat}>
+            <cylinderGeometry args={[mm(DOWNPIPE.diameter) / 2, mm(DOWNPIPE.diameter) / 2, height - bH, 8]} />
+          </mesh>
+          {/* Downpipe strap */}
+          <mesh position={[x, height * 0.4, frontZ + gutterW]} material={bracketMat}>
+            <torusGeometry args={[mm(DOWNPIPE.diameter) / 2 + 0.005, 0.003, 6, 12]} />
+          </mesh>
+        </group>
+      ))}
+    </>
+  );
+}
+
+/** Stage 8 — designer beam (decorative fascia) */
+function DesignerBeam({ config, beam, patioType, frameMat }: {
+  config: PatioConfig; beam: BeamSpec; patioType: PatioTypeSpec; frameMat: THREE.Material;
+}) {
+  if (!config.accessories.designerBeam) return null;
+  const { width, height } = config;
+  const bH = mm(beam.profileHeight);
+  const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
+  return (
+    <mesh position={[0, height - bH * 1.5, config.depth / 2 + overhang + 0.01]} material={frameMat} castShadow>
+      <boxGeometry args={[width + 0.08, bH * 0.5, mm(beam.profileWidth) * 1.5]} />
+    </mesh>
+  );
+}
+
+/** Stage 9 — LED lights (follow roof slope / gable) */
+function Lights({ config, beam, frameMat }: {
+  config: PatioConfig; beam: BeamSpec; frameMat: THREE.Material;
+}) {
+  if (!config.accessories.lighting) return null;
+  const { width, depth, height, shape } = config;
+  const bH = mm(beam.profileHeight);
+  const isGable = shape === 'gable';
+  const gableH = isGable ? Math.min(width, depth) * 0.18 : 0;
+  const count = Math.max(2, Math.ceil(width / 1.5));
+
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => {
+        const x = -width / 2 + 0.4 + (i * (width - 0.8)) / Math.max(1, count - 1);
+        const gableOffset = isGable ? gableH * (1 - Math.abs(x) / (width / 2)) : 0;
+        const lightY = height - bH - 0.05 + gableOffset;
+        return (
+          <group key={`light-${i}`}>
+            <mesh position={[x, lightY, 0]} castShadow>
+              <cylinderGeometry args={[0.05, 0.065, 0.025, 12]} />
+              <meshStandardMaterial color="#333" metalness={0.8} roughness={0.3} />
+            </mesh>
+            <pointLight position={[x, lightY - 0.04, 0]} intensity={0.25} distance={3} color="#ffd699" />
+          </group>
+        );
+      })}
+    </>
+  );
+}
+
+/** Stage 10 — ceiling fan (follows gable peak) */
+function Fan({ config, beam }: {
+  config: PatioConfig; beam: BeamSpec;
+}) {
+  if (!config.accessories.fans) return null;
+  const { width, depth, height, shape } = config;
+  const bH = mm(beam.profileHeight);
+  const isGable = shape === 'gable';
+  const gableH = isGable ? Math.min(width, depth) * 0.18 : 0;
+  const fanY = height - bH - 0.15 + gableH;
+
+  return (
+    <group>
+      {/* Rod */}
+      <mesh position={[0, fanY + 0.06, 0]}>
+        <cylinderGeometry args={[0.015, 0.015, 0.12, 8]} />
+        <meshStandardMaterial color="#444" metalness={0.7} roughness={0.3} />
+      </mesh>
+      {/* Motor housing */}
+      <mesh position={[0, fanY, 0]}>
+        <cylinderGeometry args={[0.04, 0.04, 0.04, 12]} />
+        <meshStandardMaterial color="#444" metalness={0.7} roughness={0.3} />
+      </mesh>
+      {/* Blades */}
+      {[0, 1, 2, 3, 4].map((i) => (
+        <mesh
+          key={`blade-${i}`}
+          position={[Math.cos(i * Math.PI * 2 / 5) * 0.22, fanY - 0.02, Math.sin(i * Math.PI * 2 / 5) * 0.22]}
+          rotation={[0, i * Math.PI * 2 / 5, 0]}
+        >
+          <boxGeometry args={[0.35, 0.008, 0.06]} />
+          <meshStandardMaterial color="#555" metalness={0.5} roughness={0.4} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Decorative column wraps */
+function DecorativeColumns({ positions, height, frameMat }: {
+  positions: [number, number][]; height: number; frameMat: THREE.Material;
+}) {
+  return (
+    <>
+      {positions.map(([x, z], i) => (
+        <mesh key={`dec-col-${i}`} position={[x, height * 0.35, z]} material={frameMat} castShadow>
+          <cylinderGeometry args={[0.055, 0.075, height * 0.7, 12]} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+/* ── Main component ─────────────────────────────────────────── */
 
 export default function PatioMesh({ config }: { config: PatioConfig }) {
-  const { width, depth, height, shape, style, frameColor, accessories, material, colorbondType, attachedSides = ['back'] } = config;
-  const frameMat = useMemo(() => makeMat(frameColor), [frameColor]);
-  const roofMat = useMemo(() => {
-    if (material === 'insulated') {
-      return makeMat('#e8e0d0', 0.1, 0.7); // cream/white insulated panel look
-    }
-    return makeMat(frameColor, 0.5, 0.4); // colorbond matches frame
-  }, [frameColor, material]);
+  const { width, depth, height, style, frameColor, material, colorbondType, attachedSides = ['back'], accessories, shape } = config;
 
   const isFreestanding = style === 'free-standing';
-  const isGable = shape === 'gable';
-  const isSkyline = style === 'skyline';
-  const slopeAngle = style === 'skillion' ? 0.08 : 0.03;
-  const gableHeight = isGable ? Math.min(width, depth) * 0.2 : 0;
   const hasBack = attachedSides.includes('back');
   const hasLeft = attachedSides.includes('left');
   const hasRight = attachedSides.includes('right');
 
-  // Post positions - skip posts on attached sides
+  // Select real Stratco components based on dimensions
+  const spanMm = depth * 1000;
+  const patioType = useMemo(() => selectPatioType(spanMm, isFreestanding), [spanMm, isFreestanding]);
+  const beam = useMemo(() => selectBeamForSpan(spanMm), [spanMm]);
+  const sheet = useMemo(() => selectSheet(material, colorbondType), [material, colorbondType]);
+
+  const frameMat = useMemo(() => mat(frameColor), [frameColor]);
+  const roofMat = useMemo(() => {
+    if (material === 'insulated') return mat('#e8e0d0', 0.1, 0.7);
+    return mat(frameColor, 0.5, 0.4);
+  }, [frameColor, material]);
+
+  // Column size (100mm standard, 140mm if decorative selected)
+  const colSize = accessories.columns ? 140 : 100;
+
+  // Post positions — skip attached sides
   const posts = useMemo(() => {
     const arr: [number, number][] = [];
+    const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
     const corners: { pos: [number, number]; onBack: boolean; onLeft: boolean; onRight: boolean }[] = [
-      { pos: [-width / 2, depth / 2], onBack: false, onLeft: true, onRight: false },   // front-left
-      { pos: [width / 2, depth / 2], onBack: false, onLeft: false, onRight: true },    // front-right
-      { pos: [-width / 2, -depth / 2], onBack: true, onLeft: true, onRight: false },   // back-left
-      { pos: [width / 2, -depth / 2], onBack: true, onLeft: false, onRight: true },    // back-right
+      { pos: [-width / 2, depth / 2 + overhang], onBack: false, onLeft: true, onRight: false },
+      { pos: [width / 2, depth / 2 + overhang], onBack: false, onLeft: false, onRight: true },
+      { pos: [-width / 2, -depth / 2], onBack: true, onLeft: true, onRight: false },
+      { pos: [width / 2, -depth / 2], onBack: true, onLeft: false, onRight: true },
     ];
 
-    // Add mid posts for wide spans
-    if (width > 5) {
-      corners.push({ pos: [0, depth / 2], onBack: false, onLeft: false, onRight: false }); // front-mid
-      if (isFreestanding && !hasBack) {
-        corners.push({ pos: [0, -depth / 2], onBack: true, onLeft: false, onRight: false }); // back-mid
-      }
-    }
-
-    for (const c of corners) {
-      // Skip posts on attached (wall) sides, unless freestanding
-      if (isFreestanding) {
-        arr.push(c.pos);
-      } else {
-        const isOnAttachedWall =
-          (c.onBack && hasBack) ||
-          (c.onLeft && hasLeft && !c.onBack) ||
-          (c.onRight && hasRight && !c.onBack);
-        if (!isOnAttachedWall) {
-          arr.push(c.pos);
+    // Mid posts for wide spans (beam max span check)
+    if (width > mm(beam.maxSpan)) {
+      const midPostCount = Math.ceil(width / mm(beam.maxSpan)) - 1;
+      for (let i = 1; i <= midPostCount; i++) {
+        const x = -width / 2 + (width / (midPostCount + 1)) * i;
+        corners.push({ pos: [x, depth / 2 + overhang], onBack: false, onLeft: false, onRight: false });
+        if (isFreestanding || !hasBack) {
+          corners.push({ pos: [x, -depth / 2], onBack: true, onLeft: false, onRight: false });
         }
       }
     }
 
-    return arr;
-  }, [width, depth, isFreestanding, hasBack, hasLeft, hasRight]);
-
-  const rafterCount = Math.max(4, Math.round(width / 0.6));
-  const roofY = height;
-  const roofThick = material === 'insulated' ? INSULATED_THICKNESS : ROOF_THICKNESS;
-
-  // Superdek vs Flatdek: superdek has corrugated ridges
-  const superdekRidges = useMemo(() => {
-    if (material !== 'colorbond' || colorbondType !== 'superdek') return [];
-    const ridges: number[] = [];
-    const spacing = 0.18;
-    const count = Math.floor(depth / spacing);
-    for (let i = 0; i <= count; i++) {
-      ridges.push(-depth / 2 + i * spacing);
+    for (const c of corners) {
+      if (isFreestanding) {
+        arr.push(c.pos);
+      } else {
+        const onAttached =
+          (c.onBack && hasBack) ||
+          (c.onLeft && hasLeft && !c.onBack) ||
+          (c.onRight && hasRight && !c.onBack);
+        if (!onAttached) arr.push(c.pos);
+      }
     }
-    return ridges;
-  }, [material, colorbondType, depth]);
+    return arr;
+  }, [width, depth, isFreestanding, hasBack, hasLeft, hasRight, beam, patioType]);
 
   return (
     <group>
-      {/* Ground plane */}
+      {/* Ground */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={groundMat} receiveShadow>
         <planeGeometry args={[width + 4, depth + 4]} />
       </mesh>
@@ -121,204 +571,38 @@ export default function PatioMesh({ config }: { config: PatioConfig }) {
         </mesh>
       )}
 
-      {/* Posts */}
-      {posts.map(([x, z], i) => (
-        <group key={`post-${i}`}>
-          <mesh position={[x, height / 2, z]} material={frameMat} castShadow>
-            <boxGeometry args={[POST_SIZE, height, POST_SIZE]} />
-          </mesh>
-          <mesh position={[x, 0.005, z]} material={frameMat}>
-            <boxGeometry args={[0.18, 0.01, 0.18]} />
-          </mesh>
-        </group>
-      ))}
+      {/* BUILD ORDER — following real Stratco assembly procedure */}
 
-      {/* Decorative columns */}
-      {accessories.columns && posts.map(([x, z], i) => (
-        <mesh key={`col-${i}`} position={[x, height * 0.35, z]} material={frameMat} castShadow>
-          <cylinderGeometry args={[0.06, 0.08, height * 0.7, 12]} />
-        </mesh>
-      ))}
+      {/* 1. Base plates */}
+      <BasePlates positions={posts} colSize={colSize} frameMat={frameMat} />
 
-      {/* Beams */}
-      <mesh position={[-width / 2, roofY - BEAM_H / 2, 0]} material={frameMat} castShadow>
-        <boxGeometry args={[BEAM_W, BEAM_H, depth]} />
-      </mesh>
-      <mesh position={[width / 2, roofY - BEAM_H / 2, 0]} material={frameMat} castShadow>
-        <boxGeometry args={[BEAM_W, BEAM_H, depth]} />
-      </mesh>
-      <mesh position={[0, roofY - BEAM_H / 2, depth / 2]} material={frameMat} castShadow>
-        <boxGeometry args={[width + BEAM_W, BEAM_H, BEAM_W]} />
-      </mesh>
-      <mesh position={[0, roofY - BEAM_H / 2, -depth / 2]} material={frameMat} castShadow>
-        <boxGeometry args={[width + BEAM_W, BEAM_H, BEAM_W]} />
-      </mesh>
+      {/* 2. Columns */}
+      <Columns positions={posts} height={height} colSize={colSize} frameMat={frameMat} decorative={accessories.columns} />
+      {accessories.columns && <DecorativeColumns positions={posts} height={height} frameMat={frameMat} />}
 
-      {/* Designer beam */}
-      {accessories.designerBeam && (
-        <mesh position={[0, roofY - BEAM_H * 1.8, depth / 2]} material={frameMat} castShadow>
-          <boxGeometry args={[width + BEAM_W, BEAM_H * 0.6, BEAM_W * 2]} />
-        </mesh>
-      )}
+      {/* 3. Wall brackets */}
+      {!isFreestanding && <WallBrackets config={config} beam={beam} frameMat={frameMat} />}
 
-      {/* Rafters */}
-      {Array.from({ length: rafterCount }).map((_, i) => {
-        const x = -width / 2 + (width / (rafterCount - 1)) * i;
-        const slopeOffset = slopeAngle * depth;
-        const midY = roofY + RAFTER_H / 2;
+      {/* 4. Beams */}
+      <Beams config={config} beam={beam} patioType={patioType} frameMat={frameMat} />
 
-        if (isGable) {
-          const t = Math.abs(x) / (width / 2);
-          const gableY = gableHeight * (1 - t);
-          return (
-            <mesh key={`r-${i}`} position={[x, midY + gableY, 0]} material={frameMat} castShadow>
-              <boxGeometry args={[RAFTER_W, RAFTER_H, depth + 0.15]} />
-            </mesh>
-          );
-        }
+      {/* 5. Purlins (Type 3/4) */}
+      <Purlins config={config} beam={beam} patioType={patioType} frameMat={frameMat} />
 
-        return (
-          <group key={`r-${i}`}>
-            <mesh
-              position={[x, midY + slopeOffset / 2, 0]}
-              rotation={[slopeAngle, 0, 0]}
-              material={frameMat}
-              castShadow
-            >
-              <boxGeometry args={[RAFTER_W, RAFTER_H, depth + 0.15]} />
-            </mesh>
-          </group>
-        );
-      })}
+      {/* 6. Roof sheets */}
+      <RoofSheets config={config} beam={beam} sheet={sheet} patioType={patioType} roofMat={roofMat} />
 
-      {/* Roof panels */}
-      {isGable ? (
-        <GableRoof width={width} depth={depth} roofY={roofY} gableHeight={gableHeight} roofThick={roofThick} roofMat={roofMat} />
-      ) : isSkyline ? (
-        <>
-          <mesh position={[-width / 4 - 0.05, roofY + roofThick / 2, 0]} rotation={[slopeAngle, 0, 0]} material={roofMat} castShadow>
-            <boxGeometry args={[width / 2 + 0.05, roofThick, depth + 0.15]} />
-          </mesh>
-          <mesh position={[width / 4 + 0.05, roofY + roofThick / 2 + 0.15, 0]} rotation={[slopeAngle, 0, 0]} material={roofMat} castShadow>
-            <boxGeometry args={[width / 2 + 0.05, roofThick, depth + 0.15]} />
-          </mesh>
-          <mesh position={[0, roofY + 0.1, 0]} material={glassMat}>
-            <boxGeometry args={[0.3, 0.02, depth + 0.15]} />
-          </mesh>
-        </>
-      ) : (
-        <mesh position={[0, roofY + roofThick / 2, 0]} rotation={[slopeAngle, 0, 0]} material={roofMat} castShadow receiveShadow>
-          <boxGeometry args={[width + 0.2, roofThick, depth + 0.15]} />
-        </mesh>
-      )}
+      {/* 7. Gutters & downpipes */}
+      <GuttersAndDownpipes config={config} beam={beam} patioType={patioType} frameMat={frameMat} />
 
-      {/* Superdek corrugation ridges */}
-      {superdekRidges.map((z, i) => (
-        <mesh key={`ridge-${i}`} position={[0, roofY + roofThick + 0.008, z]} material={roofMat}>
-          <boxGeometry args={[width + 0.15, 0.015, 0.04]} />
-        </mesh>
-      ))}
+      {/* 8. Designer beam */}
+      <DesignerBeam config={config} beam={beam} patioType={patioType} frameMat={frameMat} />
 
-      {/* Insulated panel underside detail (visible ribs) */}
-      {material === 'insulated' && Array.from({ length: Math.ceil(width / 0.5) }).map((_, i) => {
-        const x = -width / 2 + 0.25 + i * 0.5;
-        if (x > width / 2) return null;
-        return (
-          <mesh key={`ins-rib-${i}`} position={[x, roofY + 0.005, 0]} material={roofMat}>
-            <boxGeometry args={[0.02, 0.01, depth + 0.1]} />
-          </mesh>
-        );
-      })}
+      {/* 9. Lights */}
+      <Lights config={config} beam={beam} frameMat={frameMat} />
 
-      {/* Gutters */}
-      {accessories.gutters && (
-        <>
-          <mesh position={[0, roofY - 0.02, depth / 2 + GUTTER_SIZE / 2]} material={frameMat}>
-            <boxGeometry args={[width + 0.2, GUTTER_SIZE, GUTTER_SIZE]} />
-          </mesh>
-          {[-width / 2, width / 2].map((x, i) => (
-            <mesh key={`dp-${i}`} position={[x, height / 2, depth / 2 + GUTTER_SIZE]} material={frameMat}>
-              <cylinderGeometry args={[0.025, 0.025, height, 8]} />
-            </mesh>
-          ))}
-        </>
-      )}
-
-      {/* Lighting - follows gable slope */}
-      {accessories.lighting && Array.from({ length: Math.ceil(width / 1.5) }).map((_, i) => {
-        const x = -width / 2 + 0.5 + (i * (width - 1)) / Math.max(1, Math.ceil(width / 1.5) - 1);
-        const gableOffset = isGable ? gableHeight * (1 - Math.abs(x) / (width / 2)) : 0;
-        const lightY = roofY - 0.15 + gableOffset;
-        return (
-          <group key={`light-${i}`}>
-            <mesh position={[x, lightY, 0]} castShadow>
-              <cylinderGeometry args={[0.06, 0.08, 0.03, 12]} />
-              <meshStandardMaterial color="#333" metalness={0.8} roughness={0.3} />
-            </mesh>
-            <pointLight position={[x, lightY - 0.05, 0]} intensity={0.3} distance={3} color="#ffd699" />
-          </group>
-        );
-      })}
-
-      {/* Fans - follow gable slope */}
-      {accessories.fans && (() => {
-        const gableOffset = isGable ? gableHeight * (1 - 0 / (width / 2)) : 0;
-        const fanY = roofY - 0.2 + gableOffset;
-        return (
-          <group>
-            <mesh position={[0, fanY, 0]}>
-              <cylinderGeometry args={[0.04, 0.04, 0.15, 8]} />
-              <meshStandardMaterial color="#444" metalness={0.7} roughness={0.3} />
-            </mesh>
-            {[0, 1, 2, 3].map((i) => (
-              <mesh
-                key={`blade-${i}`}
-                position={[Math.cos(i * Math.PI / 2) * 0.25, fanY - 0.15, Math.sin(i * Math.PI / 2) * 0.25]}
-                rotation={[0, i * Math.PI / 2, 0]}
-              >
-                <boxGeometry args={[0.4, 0.01, 0.08]} />
-                <meshStandardMaterial color="#555" metalness={0.5} roughness={0.4} />
-              </mesh>
-            ))}
-          </group>
-        );
-      })()}
+      {/* 10. Fan */}
+      <Fan config={config} beam={beam} />
     </group>
-  );
-}
-
-/** Gable roof component with no gaps */
-function GableRoof({ width, depth, roofY, gableHeight, roofThick, roofMat }: {
-  width: number; depth: number; roofY: number; gableHeight: number; roofThick: number; roofMat: THREE.Material;
-}) {
-  const halfW = width / 2;
-  const angle = Math.atan2(gableHeight, halfW);
-  const slopeLen = Math.sqrt(halfW * halfW + gableHeight * gableHeight);
-
-  return (
-    <>
-      {/* Left slope */}
-      <mesh
-        position={[-halfW / 2, roofY + roofThick / 2 + gableHeight / 2, 0]}
-        rotation={[0, 0, angle]}
-        material={roofMat}
-        castShadow receiveShadow
-      >
-        <boxGeometry args={[slopeLen + 0.05, roofThick, depth + 0.15]} />
-      </mesh>
-      {/* Right slope */}
-      <mesh
-        position={[halfW / 2, roofY + roofThick / 2 + gableHeight / 2, 0]}
-        rotation={[0, 0, -angle]}
-        material={roofMat}
-        castShadow receiveShadow
-      >
-        <boxGeometry args={[slopeLen + 0.05, roofThick, depth + 0.15]} />
-      </mesh>
-      {/* Ridge cap */}
-      <mesh position={[0, roofY + gableHeight + roofThick, 0]} material={roofMat}>
-        <boxGeometry args={[0.08, 0.03, depth + 0.2]} />
-      </mesh>
-    </>
   );
 }
