@@ -220,7 +220,8 @@ function RoofSheets({ config, beam, sheet, patioType, roofMat }: {
 
   if (isGable) {
     const gableH = Math.min(width, depth) * 0.18;
-    return <GableRoof width={width} depth={totalDepth} roofY={roofY} gableHeight={gableH} sheetThick={sheetThick} roofMat={roofMat} />;
+    const gableFrameMat = mat(config.frameColor);
+    return <GableRoof width={width} depth={totalDepth} roofY={roofY} gableHeight={gableH} sheetThick={sheetThick} roofMat={roofMat} frameMat={gableFrameMat} />;
   }
 
   if (config.style === 'skyline') {
@@ -263,9 +264,15 @@ function RoofSheets({ config, beam, sheet, patioType, roofMat }: {
         />
       )}
 
-      {/* Insulated panel smooth underside detail */}
+      {/* Insulated panel cream underside (clearly visible from below like H2 photos) */}
       {sheet.insulated && (
-        <InsulatedUnderside width={width} depth={totalDepth} roofY={roofY - sheetThick / 2} roofMat={roofMat} slopeAngle={slopeAngle} overhang={overhang} />
+        <>
+          <mesh position={[0, roofY - sheetThick / 2 - 0.002, overhang / 2]} rotation={[slopeAngle, 0, 0]}
+            material={mat('#f5edd8', 0.05, 0.8)} receiveShadow>
+            <boxGeometry args={[width + 0.12, 0.003, totalDepth + 0.08]} />
+          </mesh>
+          <InsulatedUnderside width={width} depth={totalDepth} roofY={roofY - sheetThick / 2} roofMat={mat('#f5edd8', 0.05, 0.8)} slopeAngle={slopeAngle} overhang={overhang} />
+        </>
       )}
     </>
   );
@@ -321,32 +328,108 @@ function InsulatedUnderside({ width, depth, roofY, roofMat, slopeAngle, overhang
   return <>{joints}</>;
 }
 
-/** Gable roof — two angled slopes + ridge cap */
-function GableRoof({ width, depth, roofY, gableHeight, sheetThick, roofMat }: {
-  width: number; depth: number; roofY: number; gableHeight: number; sheetThick: number; roofMat: THREE.Material;
+/** Create a triangular BufferGeometry for gable end infills */
+function createTriangleGeo(baseWidth: number, peakHeight: number): THREE.BufferGeometry {
+  const hw = baseWidth / 2;
+  const vertices = new Float32Array([
+    -hw, 0, 0,   // bottom-left
+     hw, 0, 0,   // bottom-right
+     0, peakHeight, 0, // peak
+  ]);
+  const normals = new Float32Array([0,0,1, 0,0,1, 0,0,1]);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+  geo.setIndex([0, 1, 2]);
+  return geo;
+}
+
+/** Create a slope panel that stays within the gable triangle (no overshoot) */
+function createSlopeGeo(halfW: number, gableH: number, depth: number, thick: number): THREE.BufferGeometry {
+  // The slope is a flat quad tilted from the eave (bottom-outside) up to the ridge (top-center).
+  // We build it as a box-like shape with 6 faces but clipped to the triangle.
+  const slopeLen = Math.sqrt(halfW * halfW + gableH * gableH);
+  const geo = new THREE.BoxGeometry(slopeLen, thick, depth);
+  return geo;
+}
+
+/** Gable roof — two properly angled slopes clipped to triangle + real triangular infills + ridge beam */
+function GableRoof({ width, depth, roofY, gableHeight, sheetThick, roofMat, frameMat }: {
+  width: number; depth: number; roofY: number; gableHeight: number; sheetThick: number;
+  roofMat: THREE.Material; frameMat: THREE.Material;
 }) {
   const halfW = width / 2;
   const angle = Math.atan2(gableHeight, halfW);
   const slopeLen = Math.sqrt(halfW * halfW + gableHeight * gableHeight);
 
+  // Offset each slope panel so it pivots from eave edge, not center
+  // Left slope: pivot at (-halfW, roofY), rises to (0, roofY+gableH)
+  const pivotXL = -halfW;
+  const pivotXR = halfW;
+  const midSlopeX = slopeLen / 2; // half the slope length along the slope axis
+
   return (
     <>
-      <mesh position={[-halfW / 2, roofY + gableHeight / 2, 0]} rotation={[0, 0, angle]} material={roofMat} castShadow receiveShadow>
-        <boxGeometry args={[slopeLen + 0.04, sheetThick, depth + 0.12]} />
-      </mesh>
-      <mesh position={[halfW / 2, roofY + gableHeight / 2, 0]} rotation={[0, 0, -angle]} material={roofMat} castShadow receiveShadow>
-        <boxGeometry args={[slopeLen + 0.04, sheetThick, depth + 0.12]} />
-      </mesh>
-      {/* Ridge cap */}
-      <mesh position={[0, roofY + gableHeight + sheetThick, 0]} material={roofMat}>
-        <boxGeometry args={[0.06, 0.025, depth + 0.15]} />
-      </mesh>
-      {/* Gable end infills (triangular approximation) */}
-      {[-1, 1].map((side) => (
-        <mesh key={`gable-end-${side}`} position={[0, roofY + gableHeight * 0.4, (depth / 2 + 0.06) * side]} material={roofMat}>
-          <boxGeometry args={[width * 0.7, gableHeight * 0.6, 0.01]} />
+      {/* Left slope — pivots from left eave edge */}
+      <group position={[pivotXL, roofY, 0]} rotation={[0, 0, angle]}>
+        <mesh position={[midSlopeX, sheetThick / 2, 0]} material={roofMat} castShadow receiveShadow>
+          <boxGeometry args={[slopeLen, sheetThick, depth]} />
         </mesh>
-      ))}
+      </group>
+      {/* Right slope — pivots from right eave edge */}
+      <group position={[pivotXR, roofY, 0]} rotation={[0, 0, Math.PI - angle]}>
+        <mesh position={[midSlopeX, sheetThick / 2, 0]} material={roofMat} castShadow receiveShadow>
+          <boxGeometry args={[slopeLen, sheetThick, depth]} />
+        </mesh>
+      </group>
+
+      {/* Ridge beam (runs along depth at the peak — dark frame color) */}
+      <mesh position={[0, roofY + gableHeight + 0.015, 0]} material={frameMat}>
+        <boxGeometry args={[0.08, 0.04, depth + 0.06]} />
+      </mesh>
+
+      {/* Ridge cap flashing */}
+      <mesh position={[0, roofY + gableHeight + 0.038, 0]} material={frameMat}>
+        <boxGeometry args={[0.2, 0.006, depth + 0.08]} />
+      </mesh>
+
+      {/* Gable end triangular infill panels (actual triangles) */}
+      {[-1, 1].map((side) => {
+        const triGeo = createTriangleGeo(width, gableHeight);
+        return (
+          <mesh
+            key={`gable-tri-${side}`}
+            geometry={triGeo}
+            position={[0, roofY, (depth / 2 + 0.005) * side]}
+            material={roofMat}
+          />
+        );
+      })}
+
+      {/* Gable end trim (triangular frame outline) */}
+      {[-1, 1].map((side) => {
+        const z = (depth / 2 + 0.01) * side;
+        return (
+          <group key={`gable-trim-${side}`}>
+            {/* Left slope trim */}
+            <group position={[-halfW, roofY, z]} rotation={[0, 0, angle]}>
+              <mesh position={[slopeLen / 2, 0.015, 0]} material={frameMat}>
+                <boxGeometry args={[slopeLen, 0.03, 0.04]} />
+              </mesh>
+            </group>
+            {/* Right slope trim */}
+            <group position={[halfW, roofY, z]} rotation={[0, 0, Math.PI - angle]}>
+              <mesh position={[slopeLen / 2, 0.015, 0]} material={frameMat}>
+                <boxGeometry args={[slopeLen, 0.03, 0.04]} />
+              </mesh>
+            </group>
+            {/* Bottom beam trim */}
+            <mesh position={[0, roofY, z]} material={frameMat}>
+              <boxGeometry args={[width, 0.03, 0.04]} />
+            </mesh>
+          </group>
+        );
+      })}
     </>
   );
 }
@@ -503,9 +586,11 @@ export default function PatioMesh({ config }: { config: PatioConfig }) {
 
   const frameMat = useMemo(() => mat(frameColor), [frameColor]);
   const roofMat = useMemo(() => {
-    if (material === 'insulated') return mat('#e8e0d0', 0.1, 0.7);
+    if (material === 'insulated') return mat('#e8e0d0', 0.1, 0.7); // Cream top
     return mat(frameColor, 0.5, 0.4);
   }, [frameColor, material]);
+  // Warm cream underside visible from below on insulated panels (as seen in H2 photos)
+  const undersideMat = useMemo(() => mat('#f5edd8', 0.05, 0.8), []);
 
   // Column size (100mm standard, 140mm if decorative selected)
   const colSize = accessories.columns ? 140 : 100;

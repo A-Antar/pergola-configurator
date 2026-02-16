@@ -239,7 +239,7 @@ export function selectPatioType(spanMm: number, isFreestanding: boolean): PatioT
 
 // ─── Select beam for span ───────────────────────────────────────
 export function selectBeamForSpan(spanMm: number): BeamSpec {
-  if (spanMm <= 4500) return BEAMS[0]; // 120 Pro-beam
+  // H2 Patios standard: always use 150mm Pro-beam for structural integrity & gutter integration
   return BEAMS[1]; // 150 Pro-beam
 }
 
