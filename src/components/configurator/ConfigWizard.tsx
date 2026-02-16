@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
-import type { PatioConfig } from "@/types/configurator";
+import type { PatioConfig, AttachmentSide } from "@/types/configurator";
 import { FRAME_COLORS } from "@/types/configurator";
 
 interface ConfigWizardProps {
@@ -44,7 +44,7 @@ export default function ConfigWizard({ config, onChange, onGetQuote }: ConfigWiz
                 : 'bg-secondary text-muted-foreground'
             }`}
           >
-            {i < step ? <Check className="w-3 h-3 mx-auto" /> : s}
+            {i < step ? <span className="flex items-center justify-center gap-1"><Check className="w-3 h-3" />{s}</span> : s}
           </button>
         ))}
       </div>
@@ -136,6 +136,43 @@ export default function ConfigWizard({ config, onChange, onGetQuote }: ConfigWiz
                 ))}
               </div>
             </div>
+            {config.style !== 'free-standing' && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  <h3 className="font-display text-lg font-semibold text-foreground">Attached Sides</h3>
+                  <p className="text-xs text-muted-foreground">Select which sides connect to the house walls</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { key: 'back' as AttachmentSide, label: 'Back' },
+                      { key: 'left' as AttachmentSide, label: 'Left' },
+                      { key: 'right' as AttachmentSide, label: 'Right' },
+                    ]).map(({ key, label }) => {
+                      const active = (config.attachedSides || ['back']).includes(key);
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => {
+                            const sides = config.attachedSides || ['back'];
+                            const next = active
+                              ? sides.filter(s => s !== key)
+                              : [...sides, key];
+                            update({ attachedSides: next.length > 0 ? next : ['back'] });
+                          }}
+                          className={`p-2 rounded-lg border text-sm font-medium transition-all ${
+                            active
+                              ? 'border-primary bg-primary/10 text-foreground'
+                              : 'border-border text-muted-foreground hover:border-primary/40'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 

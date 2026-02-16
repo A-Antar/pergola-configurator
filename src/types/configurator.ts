@@ -1,5 +1,7 @@
 export type ProductLine = 'patios' | 'louvre' | 'carports' | 'sunrooms' | 'decking' | 'ezi-slat';
 
+export type AttachmentSide = 'back' | 'left' | 'right';
+
 export interface PatioConfig {
   material: 'insulated' | 'colorbond';
   colorbondType: 'superdek' | 'flatdek';
@@ -9,6 +11,7 @@ export interface PatioConfig {
   depth: number;
   height: number;
   frameColor: string;
+  attachedSides: AttachmentSide[];
   accessories: {
     lighting: boolean;
     fans: boolean;
@@ -38,6 +41,7 @@ export const DEFAULT_PATIO_CONFIG: PatioConfig = {
   depth: 3.5,
   height: 2.8,
   frameColor: '#2d2c2b',
+  attachedSides: ['back'],
   accessories: {
     lighting: false,
     fans: false,
