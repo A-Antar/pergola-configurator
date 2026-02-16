@@ -573,7 +573,7 @@ function DecorativeColumns({ positions, height, frameMat }: {
 
 /* ── Main component ─────────────────────────────────────────── */
 
-export default function PatioMesh({ config }: { config: PatioConfig }) {
+export default function PatioMesh({ config, onPartClick }: { config: PatioConfig; onPartClick?: (part: string) => void }) {
   const { width, depth, height, style, frameColor, material, colorbondType, attachedSides = ['back'], accessories, shape } = config;
 
   const isFreestanding = style === 'free-standing';
@@ -662,35 +662,53 @@ export default function PatioMesh({ config }: { config: PatioConfig }) {
       {/* BUILD ORDER — following real Stratco assembly procedure */}
 
       {/* 1. Base plates */}
-      <BasePlates positions={posts} colSize={colSize} frameMat={frameMat} />
+      <group onClick={(e) => { e.stopPropagation(); onPartClick?.('columns'); }}>
+        <BasePlates positions={posts} colSize={colSize} frameMat={frameMat} />
+      </group>
 
       {/* 2. Columns */}
-      <Columns positions={posts} height={height} colSize={colSize} frameMat={frameMat} decorative={accessories.columns} />
-      {accessories.columns && <DecorativeColumns positions={posts} height={height} frameMat={frameMat} />}
+      <group onClick={(e) => { e.stopPropagation(); onPartClick?.('columns'); }}>
+        <Columns positions={posts} height={height} colSize={colSize} frameMat={frameMat} decorative={accessories.columns} />
+        {accessories.columns && <DecorativeColumns positions={posts} height={height} frameMat={frameMat} />}
+      </group>
 
       {/* 3. Wall brackets */}
       {!isFreestanding && <WallBrackets config={config} beam={beam} frameMat={frameMat} />}
 
       {/* 4. Beams */}
-      <Beams config={config} beam={beam} patioType={patioType} frameMat={frameMat} />
+      <group onClick={(e) => { e.stopPropagation(); onPartClick?.('beams'); }}>
+        <Beams config={config} beam={beam} patioType={patioType} frameMat={frameMat} />
+      </group>
 
       {/* 5. Purlins (Type 3/4) */}
-      <Purlins config={config} beam={beam} patioType={patioType} frameMat={frameMat} />
+      <group onClick={(e) => { e.stopPropagation(); onPartClick?.('beams'); }}>
+        <Purlins config={config} beam={beam} patioType={patioType} frameMat={frameMat} />
+      </group>
 
       {/* 6. Roof sheets */}
-      <RoofSheets config={config} beam={beam} sheet={sheet} patioType={patioType} roofMat={roofMat} />
+      <group onClick={(e) => { e.stopPropagation(); onPartClick?.('roof'); }}>
+        <RoofSheets config={config} beam={beam} sheet={sheet} patioType={patioType} roofMat={roofMat} />
+      </group>
 
       {/* 7. Gutters & downpipes */}
-      <GuttersAndDownpipes config={config} beam={beam} patioType={patioType} frameMat={frameMat} />
+      <group onClick={(e) => { e.stopPropagation(); onPartClick?.('accessories'); }}>
+        <GuttersAndDownpipes config={config} beam={beam} patioType={patioType} frameMat={frameMat} />
+      </group>
 
       {/* 8. Designer beam */}
-      <DesignerBeam config={config} beam={beam} patioType={patioType} frameMat={frameMat} />
+      <group onClick={(e) => { e.stopPropagation(); onPartClick?.('accessories'); }}>
+        <DesignerBeam config={config} beam={beam} patioType={patioType} frameMat={frameMat} />
+      </group>
 
       {/* 9. Lights */}
-      <Lights config={config} beam={beam} frameMat={frameMat} />
+      <group onClick={(e) => { e.stopPropagation(); onPartClick?.('accessories'); }}>
+        <Lights config={config} beam={beam} frameMat={frameMat} />
+      </group>
 
       {/* 10. Fan */}
-      <Fan config={config} beam={beam} />
+      <group onClick={(e) => { e.stopPropagation(); onPartClick?.('accessories'); }}>
+        <Fan config={config} beam={beam} />
+      </group>
     </group>
   );
 }

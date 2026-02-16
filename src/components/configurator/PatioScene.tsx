@@ -7,9 +7,10 @@ import { Camera, RotateCcw } from "lucide-react";
 
 interface PatioSceneProps {
   config: PatioConfig;
+  onPartClick?: (part: string) => void;
 }
 
-export default function PatioScene({ config }: PatioSceneProps) {
+export default function PatioScene({ config, onPartClick }: PatioSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controlsRef = useRef<any>(null);
 
@@ -49,7 +50,7 @@ export default function PatioScene({ config }: PatioSceneProps) {
         />
         <directionalLight position={[-5, 8, -3]} intensity={0.4} />
 
-        <PatioMesh config={config} />
+        <PatioMesh config={config} onPartClick={onPartClick} />
 
         <ContactShadows
           position={[0, 0, 0]}
