@@ -36,9 +36,9 @@ export default function PatioScene({ config }: PatioSceneProps) {
         camera={{ position: [camDist, camDist * 0.6, camDist], fov: 35 }}
         className="w-full h-full"
         gl={{ preserveDrawingBuffer: true }}
-        style={{ background: '#111' }}
+        style={{ background: 'linear-gradient(180deg, #d4cfc7 0%, #a89f93 100%)' }}
       >
-        <fog attach="fog" args={['#111', camDist * 2, camDist * 4]} />
+        <fog attach="fog" args={['#b0a898', camDist * 2.5, camDist * 5]} />
         <ambientLight intensity={0.3} />
         <directionalLight
           position={[8, 12, 6]}
@@ -66,11 +66,11 @@ export default function PatioScene({ config }: PatioSceneProps) {
           enableRotate
           minDistance={2}
           maxDistance={25}
-          maxPolarAngle={Math.PI / 2.1}
+          maxPolarAngle={Math.PI * 0.85}
           target={[0, config.height / 2, 0]}
         />
 
-        <Environment preset="night" />
+        <Environment preset="city" />
       </Canvas>
 
       {/* Controls overlay */}
