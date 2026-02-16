@@ -244,41 +244,39 @@ function RoofSheets({ config, beam, sheet, patioType, roofMat }: {
   }
 
   // Flat / skillion / fly-over
-  // Pivot from the BACK beam edge so the slope runs parallel to the frame
-  const backZ = -totalDepth / 2;
+  // Sheet sits on top of beams, gentle slope centered so it stays within the frame
+  const sheetCenterZ = overhang / 2;
   return (
     <>
-      <group position={[0, roofY, backZ]} rotation={[slopeAngle, 0, 0]}>
-        <mesh position={[0, 0, totalDepth / 2 + 0.05]} material={roofMat} castShadow receiveShadow>
-          <boxGeometry args={[width + 0.15, sheetThick, totalDepth + 0.1]} />
-        </mesh>
+      <mesh position={[0, roofY, sheetCenterZ]} rotation={[slopeAngle, 0, 0]} material={roofMat} castShadow receiveShadow>
+        <boxGeometry args={[width + 0.15, sheetThick, totalDepth + 0.1]} />
+      </mesh>
 
-        {/* Rib detail for superdek or insulated top profile */}
-        {sheet.ribHeight > 0 && (
-          <SheetRibs
-            width={width}
-            depth={totalDepth}
-            roofY={sheetThick / 2}
-            ribH={mm(sheet.ribHeight)}
-            ribSpacing={mm(sheet.ribSpacing)}
-            roofMat={roofMat}
-            direction={patioType.sheetDirection}
-            slopeAngle={0}
-            overhang={0}
-          />
-        )}
+      {/* Rib detail for superdek or insulated top profile */}
+      {sheet.ribHeight > 0 && (
+        <SheetRibs
+          width={width}
+          depth={totalDepth}
+          roofY={roofY + sheetThick / 2}
+          ribH={mm(sheet.ribHeight)}
+          ribSpacing={mm(sheet.ribSpacing)}
+          roofMat={roofMat}
+          direction={patioType.sheetDirection}
+          slopeAngle={slopeAngle}
+          overhang={overhang}
+        />
+      )}
 
-        {/* Insulated panel cream underside */}
-        {sheet.insulated && (
-          <>
-            <mesh position={[0, -sheetThick / 2 - 0.002, totalDepth / 2 + 0.04]}
-              material={mat('#f5edd8', 0.05, 0.8)} receiveShadow>
-              <boxGeometry args={[width + 0.12, 0.003, totalDepth + 0.08]} />
-            </mesh>
-            <InsulatedUnderside width={width} depth={totalDepth} roofY={-sheetThick / 2} roofMat={mat('#f5edd8', 0.05, 0.8)} slopeAngle={0} overhang={0} />
-          </>
-        )}
-      </group>
+      {/* Insulated panel cream underside */}
+      {sheet.insulated && (
+        <>
+          <mesh position={[0, roofY - sheetThick / 2 - 0.002, sheetCenterZ]} rotation={[slopeAngle, 0, 0]}
+            material={mat('#f5edd8', 0.05, 0.8)} receiveShadow>
+            <boxGeometry args={[width + 0.12, 0.003, totalDepth + 0.08]} />
+          </mesh>
+          <InsulatedUnderside width={width} depth={totalDepth} roofY={roofY - sheetThick / 2} roofMat={mat('#f5edd8', 0.05, 0.8)} slopeAngle={slopeAngle} overhang={overhang} />
+        </>
+      )}
     </>
   );
 }
