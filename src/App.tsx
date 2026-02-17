@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import PatioConfigurator from "./pages/PatioConfigurator";
+import QATestPanel from "./pages/QATestPanel";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,7 @@ const App = () => (
           <Route path="/configure/patios" element={<PatioConfigurator />} />
           {/* Embed mode - same component, uses ?embed=1 query param */}
           <Route path="/embed/patios" element={<PatioConfigurator />} />
+          <Route path="/dev/qa" element={<QATestPanel />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
