@@ -8,7 +8,7 @@ import type { Part } from "@/lib/patio-engine";
 import { QUALITY_PRESETS, type QualityLevel } from "@/lib/materials";
 import { useRef, useCallback, useState, useEffect } from "react";
 import {
-  Camera, RotateCcw, RotateCw, Eye,
+  Camera, RotateCcw, RotateCw, Eye, Sun, Warehouse,
 } from "lucide-react";
 import * as THREE from "three";
 
@@ -27,6 +27,7 @@ interface PatioSceneProps {
 }
 
 type CameraPreset = 'iso' | 'front' | 'left' | 'right' | 'under' | 'top';
+type SceneMode = 'studio' | 'environment';
 
 const HDRI_FILES: Record<HdriPreset, string> = {
   day: '/hdr/bright_day_2k.hdr',
@@ -107,6 +108,7 @@ export default function PatioScene({
   const controlsRef = useRef<any>(null);
   const [showDims, setShowDims] = useState<'off' | 'key' | 'all'>('off');
   const [autoRotate, setAutoRotate] = useState(false);
+  const [sceneMode, setSceneMode] = useState<SceneMode>('studio');
   const [internalQuality, setInternalQuality] = useState<QualityLevel>('balanced');
   const quality = externalQuality ?? internalQuality;
   const qSettings = QUALITY_PRESETS[quality];
@@ -184,12 +186,21 @@ export default function PatioScene({
           toneMappingExposure: 1.1,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
-        style={{ background: 'linear-gradient(180deg, #c8c2b8 0%, #a89f93 60%, #8a8278 100%)' }}
+        style={{ background: sceneMode === 'studio'
+          ? 'linear-gradient(180deg, #c8c2b8 0%, #a89f93 60%, #8a8278 100%)'
+          : 'transparent'
+        }}
       >
-        <fog attach="fog" args={['#b8b0a4', camDist * 3, camDist * 6]} />
+        {sceneMode === 'studio' && (
+          <fog attach="fog" args={['#b8b0a4', camDist * 3, camDist * 6]} />
+        )}
 
-        {/* ── HDRI Environment — the ONLY source of reflections ── */}
-        <Environment files={hdriFile} background={false} />
+        {/* ── HDRI Environment ── */}
+        <Environment
+          files={hdriFile}
+          background={sceneMode === 'environment'}
+          backgroundBlurriness={sceneMode === 'environment' ? 0.03 : 0}
+        />
 
         {/* Sun directional (shadow caster) */}
         <directionalLight
@@ -305,6 +316,28 @@ export default function PatioScene({
         </div>
 
         {/* Actions */}
+        {/* Scene mode */}
+        <div className="flex gap-0.5 bg-background/70 backdrop-blur-md border border-border/50 rounded-lg p-0.5">
+          <button
+            onClick={() => setSceneMode('studio')}
+            title="Studio mode"
+            className={`px-2 py-1.5 rounded-md text-[10px] font-medium transition-all duration-200 ${
+              sceneMode === 'studio' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Warehouse className="w-3 h-3" />
+          </button>
+          <button
+            onClick={() => setSceneMode('environment')}
+            title="Environment mode"
+            className={`px-2 py-1.5 rounded-md text-[10px] font-medium transition-all duration-200 ${
+              sceneMode === 'environment' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Sun className="w-3 h-3" />
+          </button>
+        </div>
+
         <div className="flex gap-0.5 bg-background/70 backdrop-blur-md border border-border/50 rounded-lg p-0.5">
           <button
             onClick={() => setShowDims(prev => prev === 'off' ? 'key' : prev === 'key' ? 'all' : 'off')}
