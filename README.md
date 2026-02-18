@@ -60,6 +60,54 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## 3D Configurator — Extension Guide
+
+### Adding a new material preset
+
+Edit `src/lib/materials.ts`:
+
+```ts
+// Add to MATERIALS object
+myCustomMaterial: createPBRMaterial({
+  color: '#hex',
+  metalness: 0.4,
+  roughness: 0.6,
+  envMapIntensity: 1.2,
+  clearcoat: 0.2,         // optional
+  clearcoatRoughness: 0.3, // optional
+}),
+```
+
+For frame colors (powdercoated aluminum), use `createFrameMaterial(hex)` — it auto-boosts
+environment reflections on dark colors to prevent black-on-black loss.
+
+### Adding a new environment/lighting preset
+
+Edit the `LIGHTING` constant in `src/components/configurator/PatioScene.tsx`:
+
+```ts
+const LIGHTING = {
+  // ...existing presets...
+  myPreset: {
+    ambient: 0.3,
+    dir1: 1.5,        // key light intensity
+    dir2: 0.4,        // fill light intensity
+    dir1Color: '#fff', // key light color
+    dir2Color: '#ccf', // fill light color
+    env: 'park',       // drei Environment preset name
+    fogColor: '#aaa',
+    bgGradient: 'linear-gradient(180deg, #ccc 0%, #999 100%)',
+  },
+};
+```
+
+### Quality presets
+
+Three quality levels are available in `src/lib/materials.ts`:
+- **High**: 2048 shadow maps, full contact shadows
+- **Balanced** (default): 1024 shadows, moderate quality
+- **Low**: No shadows, minimal effects for weaker hardware
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
