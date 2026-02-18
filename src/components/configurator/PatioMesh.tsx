@@ -43,15 +43,21 @@ function Columns({ positions, height, colSize, frameMat, decorative }: {
   positions: [number, number][]; height: number; colSize: number; frameMat: THREE.Material; decorative: boolean;
 }) {
   const s = mm(colSize);
+  const capH = mm(BRACKETS.postCap.height);
+  const gap = 0.003; // 3mm gap between post and cap for visual separation
+  // Post stops short of full height to leave room for cap + gap
+  const postH = height - capH - gap;
   return (
     <>
       {positions.map(([x, z], i) => (
         <group key={`col-${i}`}>
-          <mesh position={[x, height / 2, z]} material={frameMat} castShadow>
-            <boxGeometry args={[s, height, s]} />
+          {/* Post — stops below beam connection */}
+          <mesh position={[x, postH / 2, z]} material={frameMat} castShadow>
+            <boxGeometry args={[s, postH, s]} />
           </mesh>
-          <mesh position={[x, height, z]} material={MATERIALS.bracket}>
-            <boxGeometry args={[s + 0.01, mm(BRACKETS.postCap.height), s + 0.01]} />
+          {/* Post cap — sits on top of post with visible gap */}
+          <mesh position={[x, postH + gap + capH / 2, z]} material={MATERIALS.postCap}>
+            <boxGeometry args={[s + 0.012, capH, s + 0.012]} />
           </mesh>
         </group>
       ))}
@@ -107,20 +113,29 @@ function Beams({ config, beam, patioType, frameMat }: {
   const bW = mm(150);
   const beamY = height - bH / 2;
   const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
+  const gap = 0.004; // 4mm gap between beam ends and brackets
+
+  // Beam bracket dimensions
+  const bbW = mm(BRACKETS.beamToBeamBracket.width);
+  const bbH = mm(BRACKETS.beamToBeamBracket.height);
 
   return (
     <>
+      {/* Back beam — shortened to leave gaps at corners for brackets */}
       <mesh position={[0, beamY, -depth / 2]} material={frameMat} castShadow>
-        <boxGeometry args={[width + bW, bH, bW]} />
+        <boxGeometry args={[width - bbW - gap * 2, bH, bW]} />
       </mesh>
-      <mesh position={[-width / 2, beamY, 0]} material={frameMat} castShadow>
-        <boxGeometry args={[bW, bH, depth]} />
+      {/* Left side beam — shortened for bracket gaps */}
+      <mesh position={[-width / 2, beamY, overhang / 2]} material={frameMat} castShadow>
+        <boxGeometry args={[bW, bH, depth + overhang - bbW - gap * 2]} />
       </mesh>
-      <mesh position={[width / 2, beamY, 0]} material={frameMat} castShadow>
-        <boxGeometry args={[bW, bH, depth]} />
+      {/* Right side beam — shortened for bracket gaps */}
+      <mesh position={[width / 2, beamY, overhang / 2]} material={frameMat} castShadow>
+        <boxGeometry args={[bW, bH, depth + overhang - bbW - gap * 2]} />
       </mesh>
+      {/* Front beam — shortened for bracket gaps */}
       <mesh position={[0, beamY, depth / 2 + overhang]} material={frameMat} castShadow>
-        <boxGeometry args={[width + bW, bH, bW]} />
+        <boxGeometry args={[width - bbW - gap * 2, bH, bW]} />
       </mesh>
 
       {beam.fluted && (
@@ -128,7 +143,7 @@ function Beams({ config, beam, patioType, frameMat }: {
           {[0.25, 0.5, 0.75].map((t, fi) => (
             <mesh key={`flute-f-${fi}`}
               position={[0, height - bH * t, depth / 2 + overhang + bW / 2 + 0.002]}
-              material={MATERIALS.bracket}
+              material={MATERIALS.beamBracket}
             >
               <boxGeometry args={[width + bW - 0.02, 0.004, 0.004]} />
             </mesh>
@@ -136,14 +151,15 @@ function Beams({ config, beam, patioType, frameMat }: {
         </>
       )}
 
+      {/* Beam-to-beam brackets at each corner — distinct material */}
       {[
         [-width / 2, -depth / 2],
         [width / 2, -depth / 2],
         [-width / 2, depth / 2 + overhang],
         [width / 2, depth / 2 + overhang],
       ].map(([x, z], i) => (
-        <mesh key={`bb-${i}`} position={[x, beamY, z]} material={MATERIALS.bracket}>
-          <boxGeometry args={[mm(BRACKETS.beamToBeamBracket.width), mm(BRACKETS.beamToBeamBracket.height), bW + 0.01]} />
+        <mesh key={`bb-${i}`} position={[x, beamY, z]} material={MATERIALS.beamBracket}>
+          <boxGeometry args={[bbW + 0.008, bbH, bW + 0.008]} />
         </mesh>
       ))}
     </>
