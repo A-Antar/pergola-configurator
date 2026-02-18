@@ -53,14 +53,16 @@ export function createFrameMaterial(hex: string): THREE.MeshPhysicalMaterial {
   const luminance = c.r * 0.299 + c.g * 0.587 + c.b * 0.114;
   const isDark = luminance < 0.15;
 
+  // Step 1: Ultra-realistic powdercoated aluminium
+  // High metalness + low roughness = shiny reflective aluminium
+  // Strong clearcoat simulates the glossy powdercoat finish
   return createPBRMaterial({
     color: hex,
-    metalness: 0.45,
-    roughness: 0.55,
-    // Dark colors get boosted env reflection to prevent black-on-black loss
-    envMapIntensity: isDark ? 2.0 : 1.3,
-    clearcoat: 0.3,
-    clearcoatRoughness: 0.25,
+    metalness: 0.82,
+    roughness: 0.18,
+    envMapIntensity: isDark ? 3.5 : 2.5,
+    clearcoat: 0.9,
+    clearcoatRoughness: 0.08,
   });
 }
 
