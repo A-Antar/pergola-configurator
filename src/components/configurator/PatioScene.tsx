@@ -244,12 +244,11 @@ export default function PatioScene({
           color={light.dir2Color}
         />
 
-        {/* Rim light — helps dark materials stand out */}
-        <directionalLight
-          position={[-8, 3, 8]}
-          intensity={0.4}
-          color="#c8d4e8"
-        />
+        {/* Step 2: Multi-directional rim/bounce lights for realistic aluminium reflections */}
+        <directionalLight position={[-8, 3, 8]} intensity={0.7} color="#d4dce8" />
+        <directionalLight position={[6, 2, -6]} intensity={0.5} color="#e0d8cc" />
+        <directionalLight position={[0, 10, 0]} intensity={0.4} color="#ffffff" />
+        <pointLight position={[0, 1.5, 0]} intensity={0.3} color="#f0e8d8" distance={15} />
 
         <PatioMesh config={config} onPartClick={onPartClick} />
 
@@ -306,8 +305,8 @@ export default function PatioScene({
         {/* Auto rotate */}
         <AutoRotate enabled={autoRotate} />
 
-        {/* Removed Environment preset - HDR fetch fails in preview */}
-        <hemisphereLight args={['#c8d4e8', '#8a7560', 0.4]} />
+        {/* Step 3: Strong hemisphere light acts as environment reflection source */}
+        <hemisphereLight args={['#d8e4f4', '#a09080', 0.8]} />
       </Canvas>
 
       {/* ── Camera presets ─────────────────────────────────── */}
