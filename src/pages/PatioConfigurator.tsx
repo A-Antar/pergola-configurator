@@ -6,7 +6,7 @@ import ConfigWizard from "@/components/configurator/ConfigWizard";
 import QuotePanel from "@/components/configurator/QuotePanel";
 import LeadCaptureDialog from "@/components/configurator/LeadCaptureDialog";
 import { DEFAULT_PATIO_CONFIG } from "@/types/configurator";
-import type { PatioConfig } from "@/types/configurator";
+import type { PatioConfig, WallSide } from "@/types/configurator";
 import type { QualityLevel } from "@/lib/materials";
 import { calculateEstimate } from "@/components/configurator/QuotePanel";
 
@@ -14,7 +14,8 @@ const PART_TO_STEP: Record<string, number> = {
   columns: 2,
   beams: 2,
   roof: 0,
-  accessories: 4,
+  walls: 4,
+  accessories: 5,
 };
 
 export default function PatioConfigurator() {
@@ -24,6 +25,7 @@ export default function PatioConfigurator() {
   const [quality, setQuality] = useState<QualityLevel>('balanced');
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [quoteCollapsed, setQuoteCollapsed] = useState(false);
+  const [selectedWall, setSelectedWall] = useState<WallSide | null>(null);
 
   const handlePartClick = useCallback((part: string) => {
     const step = PART_TO_STEP[part];
@@ -91,6 +93,10 @@ export default function PatioConfigurator() {
               onPartClick={handlePartClick}
               quality={quality}
               onQualityChange={setQuality}
+              wallEditMode={wizardStep === 4}
+              selectedWall={selectedWall}
+              onSelectWall={setSelectedWall}
+              onConfigChange={setConfig}
             />
           </Suspense>
         </div>
@@ -111,6 +117,8 @@ export default function PatioConfigurator() {
                 onGetQuote={() => setQuoteOpen(true)}
                 activeStep={wizardStep}
                 onStepChange={setWizardStep}
+                selectedWall={selectedWall}
+                onSelectWall={setSelectedWall}
               />
             </div>
           </div>

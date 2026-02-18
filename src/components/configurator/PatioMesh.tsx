@@ -500,7 +500,7 @@ function DecorativeColumns({ positions, height, frameMat }: {
 /* ── Main component ─────────────────────────────────────────── */
 
 export default function PatioMesh({ config, onPartClick }: { config: PatioConfig; onPartClick?: (part: string) => void }) {
-  const { width, depth, height, style, frameColor, material, colorbondType, attachedSides = ['back'], accessories, shape } = config;
+  const { width, depth, height, style, frameColor, material, colorbondType, attachedSides = ['back'], accessories, shape, walls } = config;
 
   const isFreestanding = style === 'free-standing';
   const hasBack = attachedSides.includes('back');
@@ -560,20 +560,42 @@ export default function PatioMesh({ config, onPartClick }: { config: PatioConfig
         <planeGeometry args={[width + 4, depth + 4]} />
       </mesh>
 
-      {/* Walls for attached sides */}
+      {/* Walls for attached sides — use wall config for sizing */}
       {!isFreestanding && hasBack && (
-        <mesh position={[0, height / 2 + 0.5, -depth / 2 - 0.1]} material={MATERIALS.wall} receiveShadow>
-          <boxGeometry args={[width + 2, height + 1.5, 0.2]} />
+        <mesh
+          position={[0, mm(walls?.back?.height ?? 2800) / 2, -depth / 2 - mm(walls?.back?.thickness ?? 200) / 2 - mm(walls?.back?.offset ?? 0)]}
+          material={MATERIALS.wall}
+          receiveShadow
+        >
+          <boxGeometry args={[mm(walls?.back?.length ?? width * 1000), mm(walls?.back?.height ?? 2800), mm(walls?.back?.thickness ?? 200)]} />
         </mesh>
       )}
       {!isFreestanding && hasLeft && (
-        <mesh position={[-width / 2 - 0.1, height / 2 + 0.5, 0]} material={MATERIALS.wall} receiveShadow>
-          <boxGeometry args={[0.2, height + 1.5, depth + 2]} />
+        <mesh
+          position={[-width / 2 - mm(walls?.left?.thickness ?? 200) / 2 - mm(walls?.left?.offset ?? 0), mm(walls?.left?.height ?? 2800) / 2, 0]}
+          material={MATERIALS.wall}
+          receiveShadow
+        >
+          <boxGeometry args={[mm(walls?.left?.thickness ?? 200), mm(walls?.left?.height ?? 2800), mm(walls?.left?.length ?? depth * 1000)]} />
         </mesh>
       )}
       {!isFreestanding && hasRight && (
-        <mesh position={[width / 2 + 0.1, height / 2 + 0.5, 0]} material={MATERIALS.wall} receiveShadow>
-          <boxGeometry args={[0.2, height + 1.5, depth + 2]} />
+        <mesh
+          position={[width / 2 + mm(walls?.right?.thickness ?? 200) / 2 + mm(walls?.right?.offset ?? 0), mm(walls?.right?.height ?? 2800) / 2, 0]}
+          material={MATERIALS.wall}
+          receiveShadow
+        >
+          <boxGeometry args={[mm(walls?.right?.thickness ?? 200), mm(walls?.right?.height ?? 2800), mm(walls?.right?.length ?? depth * 1000)]} />
+        </mesh>
+      )}
+      {/* Front wall (context only, no structural attachment) */}
+      {walls?.front?.enabled && (
+        <mesh
+          position={[0, mm(walls.front.height) / 2, depth / 2 + mm(walls.front.thickness) / 2 + mm(walls.front.offset)]}
+          material={MATERIALS.wall}
+          receiveShadow
+        >
+          <boxGeometry args={[mm(walls.front.length), mm(walls.front.height), mm(walls.front.thickness)]} />
         </mesh>
       )}
 

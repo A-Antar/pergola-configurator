@@ -1,8 +1,9 @@
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls, Environment, ContactShadows } from "@react-three/drei";
 import PatioMesh from "./PatioMesh";
+import WallEditorMesh from "./WallEditorMesh";
 import DebugOverlay from "./DebugOverlay";
-import type { PatioConfig } from "@/types/configurator";
+import type { PatioConfig, WallSide } from "@/types/configurator";
 import type { Part } from "@/lib/patio-engine";
 import { QUALITY_PRESETS, type QualityLevel } from "@/lib/materials";
 import { useRef, useCallback, useState, useEffect } from "react";
@@ -20,6 +21,10 @@ interface PatioSceneProps {
   showDebugLabels?: boolean;
   quality?: QualityLevel;
   onQualityChange?: (q: QualityLevel) => void;
+  wallEditMode?: boolean;
+  selectedWall?: WallSide | null;
+  onSelectWall?: (side: WallSide | null) => void;
+  onConfigChange?: (config: PatioConfig) => void;
 }
 
 type LightingPreset = 'day' | 'dusk' | 'studio';
@@ -123,11 +128,12 @@ function AutoRotate({ enabled, speed = 0.3 }: { enabled: boolean; speed?: number
 export default function PatioScene({
   config, onPartClick, debugMode, debugParts, showDebugLabels,
   quality: externalQuality, onQualityChange,
+  wallEditMode, selectedWall, onSelectWall, onConfigChange,
 }: PatioSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controlsRef = useRef<any>(null);
   const [lighting, setLighting] = useState<LightingPreset>('day');
-  const [showDims, setShowDims] = useState(false);
+  const [showDims, setShowDims] = useState<'off' | 'key' | 'all'>('off');
   const [autoRotate, setAutoRotate] = useState(false);
   const [internalQuality, setInternalQuality] = useState<QualityLevel>('balanced');
   const quality = externalQuality ?? internalQuality;
@@ -252,22 +258,15 @@ export default function PatioScene({
           <DebugOverlay parts={debugParts} showLabels={showDebugLabels} showBoundingBoxes />
         )}
 
-        {/* Dimension overlays */}
-        {showDims && (
-          <group>
-            <mesh position={[0, 0.05, config.depth / 2 + 0.5]}>
-              <boxGeometry args={[config.width, 0.01, 0.01]} />
-              <meshBasicMaterial color="#00ff88" />
-            </mesh>
-            <mesh position={[config.width / 2 + 0.5, 0.05, 0]}>
-              <boxGeometry args={[0.01, 0.01, config.depth]} />
-              <meshBasicMaterial color="#00ff88" />
-            </mesh>
-            <mesh position={[config.width / 2 + 0.5, config.height / 2, -config.depth / 2]}>
-              <boxGeometry args={[0.01, config.height, 0.01]} />
-              <meshBasicMaterial color="#00ff88" />
-            </mesh>
-          </group>
+        {/* Wall Editor overlay (when in wall edit mode or dimensions shown) */}
+        {(wallEditMode || showDims !== 'off') && onConfigChange && (
+          <WallEditorMesh
+            config={config}
+            onChange={onConfigChange}
+            selectedWall={wallEditMode ? (selectedWall ?? null) : null}
+            onSelectWall={onSelectWall ?? (() => {})}
+            showDimensions={showDims}
+          />
         )}
 
         {/* Shadow catcher ground plane */}
@@ -368,13 +367,14 @@ export default function PatioScene({
         {/* Actions */}
         <div className="flex gap-0.5 bg-background/70 backdrop-blur-md border border-border/50 rounded-lg p-0.5">
           <button
-            onClick={() => setShowDims(!showDims)}
-            title="Toggle dimensions"
+            onClick={() => setShowDims(prev => prev === 'off' ? 'key' : prev === 'key' ? 'all' : 'off')}
+            title={`Dimensions: ${showDims}`}
             className={`px-2 py-1.5 rounded-md text-[10px] font-medium transition-all duration-200 ${
-              showDims ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
+              showDims !== 'off' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <Eye className="w-3 h-3" />
+            {showDims !== 'off' && <span className="ml-1 text-[8px]">{showDims}</span>}
           </button>
           <button
             onClick={() => setAutoRotate(!autoRotate)}
