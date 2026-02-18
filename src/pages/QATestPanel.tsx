@@ -1,17 +1,22 @@
 /**
  * QA Test Panel — /dev/qa
  * Acceptance test configs + debug toggles for verifying 3D geometry.
+ * Includes Reflection Test with chrome sphere validation.
  */
 
 import { useState, Suspense } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Environment } from '@react-three/drei';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Bug, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import PatioScene from '@/components/configurator/PatioScene';
-import type { PatioConfig } from '@/types/configurator';
+import type { PatioConfig, FrameFinish, HdriPreset } from '@/types/configurator';
 import { DEFAULT_PATIO_CONFIG } from '@/types/configurator';
 import { buildPatioPipeline } from '@/lib/patio-engine';
+import { MATERIALS, createFrameMaterial } from '@/lib/materials';
+import * as THREE from 'three';
 
 interface TestCase {
   name: string;
@@ -124,11 +129,63 @@ const TEST_CASES: TestCase[] = [
   },
 ];
 
+/* ── Reflection QA Scene ─────────────────────────────────── */
+function ReflectionTestScene({ finish, hdri }: { finish: FrameFinish; hdri: HdriPreset }) {
+  const hdriFile = hdri === 'day' ? '/hdr/bright_day_2k.hdr' : '/hdr/studio_soft_2k.hdr';
+  const beamMat = createFrameMaterial('#2d2c2b', finish, 2.2);
+
+  return (
+    <Canvas
+      shadows
+      camera={{ position: [4, 3, 4], fov: 40 }}
+      gl={{
+        antialias: true,
+        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMappingExposure: 1.1,
+        outputColorSpace: THREE.SRGBColorSpace,
+      }}
+      style={{ background: 'linear-gradient(180deg, #c8c2b8 0%, #a89f93 60%, #8a8278 100%)' }}
+    >
+      <Environment files={hdriFile} background={false} />
+      <directionalLight position={[8, 14, 6]} intensity={1.8} color="#fff5e6" castShadow />
+      <ambientLight intensity={0.15} />
+
+      {/* Chrome sphere — must show crisp HDRI reflections */}
+      <mesh position={[-1.2, 1, 0]}>
+        <sphereGeometry args={[0.6, 64, 64]} />
+        <meshPhysicalMaterial
+          color="#ffffff"
+          metalness={1}
+          roughness={0}
+          envMapIntensity={3}
+        />
+      </mesh>
+
+      {/* Aluminium beam sample */}
+      <mesh position={[1.2, 1, 0]}>
+        <boxGeometry args={[0.15, 2, 0.15]} />
+        <primitive object={beamMat} attach="material" />
+      </mesh>
+
+      {/* Ground */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+        <planeGeometry args={[10, 10]} />
+        <shadowMaterial transparent opacity={0.3} />
+      </mesh>
+
+      <OrbitControls enableDamping />
+    </Canvas>
+  );
+}
+
 export default function QATestPanel() {
   const navigate = useNavigate();
   const [activeTest, setActiveTest] = useState(0);
   const [debugMode, setDebugMode] = useState(false);
   const [showLabels, setShowLabels] = useState(true);
+  const [reflectionTest, setReflectionTest] = useState(false);
+  const [qaFinish, setQaFinish] = useState<FrameFinish>('gloss');
+  const [qaHdri, setQaHdri] = useState<HdriPreset>('day');
 
   const tc = TEST_CASES[activeTest];
   const pipeline = buildPatioPipeline(tc.config);
@@ -142,6 +199,10 @@ export default function QATestPanel() {
         </button>
         <Bug className="w-5 h-5 text-primary" />
         <h1 className="font-display text-lg font-bold text-primary">QA Test Panel</h1>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Reflection Test</span>
+          <Switch checked={reflectionTest} onCheckedChange={setReflectionTest} />
+        </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
@@ -160,55 +221,102 @@ export default function QATestPanel() {
             </div>
           </div>
 
+          {/* Reflection QA controls */}
+          {reflectionTest && (
+            <div className="bg-card border border-primary/30 rounded-lg p-3 space-y-3">
+              <h3 className="text-sm font-semibold text-primary">Reflection QA</h3>
+              <div className="space-y-2">
+                <span className="text-xs text-muted-foreground">Finish</span>
+                <div className="grid grid-cols-4 gap-1">
+                  {(['matte', 'satin', 'gloss', 'mirror'] as FrameFinish[]).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setQaFinish(f)}
+                      className={`px-1 py-1 rounded text-[10px] capitalize border ${
+                        qaFinish === f ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <span className="text-xs text-muted-foreground">HDRI</span>
+                <div className="grid grid-cols-2 gap-1">
+                  {(['day', 'studio'] as HdriPreset[]).map((h) => (
+                    <button
+                      key={h}
+                      onClick={() => setQaHdri(h)}
+                      className={`px-2 py-1 rounded text-[10px] capitalize border ${
+                        qaHdri === h ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground'
+                      }`}
+                    >
+                      {h}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                ✓ Chrome sphere (left) must show crisp HDRI reflections.<br/>
+                ✓ Beam (right) must show environment highlights.
+              </p>
+            </div>
+          )}
+
           {/* Test cases */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground">Acceptance Tests</h3>
-            {TEST_CASES.map((t, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveTest(i)}
-                className={`w-full text-left p-3 rounded-lg border text-sm transition-all ${
-                  i === activeTest
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border bg-card hover:border-primary/40'
-                }`}
-              >
-                <span className="font-medium text-foreground">{t.name}</span>
-                <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
-              </button>
-            ))}
-          </div>
+          {!reflectionTest && (
+            <>
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-foreground">Acceptance Tests</h3>
+                {TEST_CASES.map((t, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveTest(i)}
+                    className={`w-full text-left p-3 rounded-lg border text-sm transition-all ${
+                      i === activeTest
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-card hover:border-primary/40'
+                    }`}
+                  >
+                    <span className="font-medium text-foreground">{t.name}</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
+                  </button>
+                ))}
+              </div>
 
-          {/* Active test checks */}
-          <div className="bg-card border border-border rounded-lg p-3 space-y-2">
-            <h4 className="text-sm font-semibold text-foreground">Checklist</h4>
-            {tc.checks.map((check, i) => (
-              <label key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                <input type="checkbox" className="mt-0.5 accent-primary" />
-                {check}
-              </label>
-            ))}
-          </div>
+              {/* Active test checks */}
+              <div className="bg-card border border-border rounded-lg p-3 space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">Checklist</h4>
+                {tc.checks.map((check, i) => (
+                  <label key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <input type="checkbox" className="mt-0.5 accent-primary" />
+                    {check}
+                  </label>
+                ))}
+              </div>
 
-          {/* Pipeline summary */}
-          <div className="bg-card border border-border rounded-lg p-3 space-y-1">
-            <h4 className="text-sm font-semibold text-foreground">Pipeline Output</h4>
-            <p className="text-xs text-muted-foreground">
-              Patio Type: <span className="text-foreground">{pipeline.layout.patioType.label} — {pipeline.layout.patioType.description}</span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Beam: <span className="text-foreground">{pipeline.layout.beam.label}</span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Sheet: <span className="text-foreground">{pipeline.layout.sheet.label}</span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Parts: <span className="text-foreground">{pipeline.parts.length}</span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Posts: <span className="text-foreground">{pipeline.layout.postPositions.length}</span>
-            </p>
-          </div>
+              {/* Pipeline summary */}
+              <div className="bg-card border border-border rounded-lg p-3 space-y-1">
+                <h4 className="text-sm font-semibold text-foreground">Pipeline Output</h4>
+                <p className="text-xs text-muted-foreground">
+                  Patio Type: <span className="text-foreground">{pipeline.layout.patioType.label} — {pipeline.layout.patioType.description}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Beam: <span className="text-foreground">{pipeline.layout.beam.label}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Sheet: <span className="text-foreground">{pipeline.layout.sheet.label}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Parts: <span className="text-foreground">{pipeline.parts.length}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Posts: <span className="text-foreground">{pipeline.layout.postPositions.length}</span>
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right: 3D viewer */}
@@ -220,12 +328,16 @@ export default function QATestPanel() {
               </div>
             }
           >
-            <PatioScene
-              config={tc.config}
-              debugMode={debugMode}
-              debugParts={debugMode ? pipeline.parts : undefined}
-              showDebugLabels={showLabels}
-            />
+            {reflectionTest ? (
+              <ReflectionTestScene finish={qaFinish} hdri={qaHdri} />
+            ) : (
+              <PatioScene
+                config={tc.config}
+                debugMode={debugMode}
+                debugParts={debugMode ? pipeline.parts : undefined}
+                showDebugLabels={showLabels}
+              />
+            )}
           </Suspense>
         </div>
       </div>

@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
-import type { PatioConfig, AttachmentSide, WallSide } from "@/types/configurator";
+import type { PatioConfig, AttachmentSide, WallSide, FrameFinish, HdriPreset } from "@/types/configurator";
 import { FRAME_COLORS } from "@/types/configurator";
 import WallEditorPanel from "./WallEditorPanel";
 
@@ -202,6 +202,68 @@ export default function ConfigWizard({ config, onChange, onGetQuote, activeStep,
                   <span className="text-[10px] text-muted-foreground">{c.name}</span>
                 </button>
               ))}
+            </div>
+
+            <Separator />
+
+            {/* Aluminium Finish */}
+            <div className="space-y-2">
+              <span className="text-sm text-muted-foreground">Aluminium Finish</span>
+              <div className="grid grid-cols-4 gap-2">
+                {(['matte', 'satin', 'gloss', 'mirror'] as FrameFinish[]).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => update({ frameFinish: f })}
+                    className={`px-2 py-2 rounded border text-xs font-medium capitalize transition-all ${
+                      (config.frameFinish ?? 'gloss') === f
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border text-muted-foreground hover:border-primary/40'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Reflection Strength */}
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Reflection Strength</span>
+                <Badge variant="secondary" className="bg-secondary text-secondary-foreground">
+                  {(config.reflectionStrength ?? 2.2).toFixed(1)}
+                </Badge>
+              </div>
+              <Slider
+                value={[config.reflectionStrength ?? 2.2]}
+                onValueChange={([v]) => update({ reflectionStrength: v })}
+                min={0.8}
+                max={3.2}
+                step={0.1}
+              />
+            </div>
+
+            {/* HDRI Preset */}
+            <div className="space-y-2">
+              <span className="text-sm text-muted-foreground">Environment</span>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { key: 'day' as HdriPreset, label: 'Bright Day' },
+                  { key: 'studio' as HdriPreset, label: 'Studio' },
+                ]).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => update({ hdriPreset: key })}
+                    className={`px-3 py-2 rounded border text-sm transition-all ${
+                      (config.hdriPreset ?? 'day') === key
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border text-muted-foreground hover:border-primary/40'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

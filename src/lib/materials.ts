@@ -3,16 +3,15 @@
  * =================================
  * All materials for the 3D patio configurator.
  *
- * ## Adding a new material preset
- * 1. Add a new entry to the relevant category (frame, roof, etc.)
- * 2. Specify color (hex), metalness, roughness, and optional envMapIntensity
- * 3. The material will be created as a THREE.MeshPhysicalMaterial for best PBR results
+ * ## Finish Modes
+ * Matte / Satin / Gloss / Mirror — each maps to roughness + clearcoat presets.
  *
- * ## Adding a new environment preset
- * See PatioScene.tsx LIGHTING constant. Add a new key with ambient/dir1/dir2/env/fogColor.
+ * ## Reflection Strength
+ * Controls envMapIntensity (0.8–3.2). Requires a real HDRI environment map on the scene.
  */
 
 import * as THREE from "three";
+import type { FrameFinish } from "@/types/configurator";
 
 // ─── Material Factory ──────────────────────────────────────
 
@@ -23,6 +22,8 @@ export interface MaterialConfig {
   envMapIntensity?: number;
   clearcoat?: number;
   clearcoatRoughness?: number;
+  ior?: number;
+  specularIntensity?: number;
 }
 
 const materialCache = new Map<string, THREE.MeshPhysicalMaterial>();
@@ -38,31 +39,48 @@ export function createPBRMaterial(config: MaterialConfig): THREE.MeshPhysicalMat
     envMapIntensity: config.envMapIntensity ?? 1.2,
     clearcoat: config.clearcoat ?? 0,
     clearcoatRoughness: config.clearcoatRoughness ?? 0.1,
+    ior: config.ior ?? 1.5,
+    specularIntensity: config.specularIntensity ?? 1.0,
   });
 
   materialCache.set(key, mat);
   return mat;
 }
 
-// ─── Frame Materials (Powdercoated Aluminum) ───────────────
-// High envMapIntensity ensures dark colors reflect environment and stay visible
+// ─── Finish Presets ────────────────────────────────────────
 
-export function createFrameMaterial(hex: string): THREE.MeshPhysicalMaterial {
-  // Detect if color is very dark
-  const c = new THREE.Color(hex);
-  const luminance = c.r * 0.299 + c.g * 0.587 + c.b * 0.114;
-  const isDark = luminance < 0.15;
+interface FinishPreset {
+  roughness: number;
+  clearcoatRoughness: number;
+  envMapIntensity: number;
+}
 
-  // Step 1: Ultra-realistic powdercoated aluminium
-  // High metalness + low roughness = shiny reflective aluminium
-  // Strong clearcoat simulates the glossy powdercoat finish
+const FINISH_PRESETS: Record<FrameFinish, FinishPreset> = {
+  matte:  { roughness: 0.45, clearcoatRoughness: 0.20, envMapIntensity: 1.4 },
+  satin:  { roughness: 0.28, clearcoatRoughness: 0.12, envMapIntensity: 1.8 },
+  gloss:  { roughness: 0.18, clearcoatRoughness: 0.06, envMapIntensity: 2.2 },
+  mirror: { roughness: 0.06, clearcoatRoughness: 0.03, envMapIntensity: 2.8 },
+};
+
+// ─── Powder-Coated Aluminium (single source of truth) ─────
+
+export function createFrameMaterial(
+  hex: string,
+  finish: FrameFinish = 'gloss',
+  reflectionStrength?: number,
+): THREE.MeshPhysicalMaterial {
+  const preset = FINISH_PRESETS[finish];
+  const envIntensity = reflectionStrength ?? preset.envMapIntensity;
+
   return createPBRMaterial({
     color: hex,
-    metalness: 0.82,
-    roughness: 0.18,
-    envMapIntensity: isDark ? 3.5 : 2.5,
-    clearcoat: 0.9,
-    clearcoatRoughness: 0.08,
+    metalness: 0.1,           // painted/clearcoated, not raw metal
+    roughness: preset.roughness,
+    clearcoat: 1.0,
+    clearcoatRoughness: preset.clearcoatRoughness,
+    ior: 1.45,
+    specularIntensity: 1.0,
+    envMapIntensity: Math.min(envIntensity, 3.2), // clamp to avoid artifacts
   });
 }
 
@@ -143,6 +161,15 @@ export const MATERIALS = {
     metalness: 0.75,
     roughness: 0.3,
     envMapIntensity: 1.8,
+  }),
+
+  /** Chrome sphere for QA reflection testing */
+  chromeSphere: createPBRMaterial({
+    color: '#ffffff',
+    metalness: 1.0,
+    roughness: 0.0,
+    envMapIntensity: 3.0,
+    clearcoat: 0,
   }),
 };
 
