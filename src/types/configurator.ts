@@ -17,6 +17,9 @@ export interface WallConfig {
 
 export type WallsConfig = Record<WallSide, WallConfig>;
 
+export type FrameFinish = 'matte' | 'satin' | 'gloss' | 'mirror';
+export type HdriPreset = 'day' | 'studio';
+
 export interface PatioConfig {
   material: 'insulated' | 'colorbond';
   colorbondType: 'superdek' | 'flatdek';
@@ -26,6 +29,9 @@ export interface PatioConfig {
   depth: number;
   height: number;
   frameColor: string;
+  frameFinish: FrameFinish;
+  reflectionStrength: number;
+  hdriPreset: HdriPreset;
   attachedSides: AttachmentSide[];
   walls: WallsConfig;
   accessories: {
@@ -70,6 +76,9 @@ export const DEFAULT_PATIO_CONFIG: PatioConfig = {
   depth: 3.5,
   height: 2.8,
   frameColor: '#2d2c2b',
+  frameFinish: 'gloss',
+  reflectionStrength: 2.2,
+  hdriPreset: 'day',
   attachedSides: ['back'],
   walls: createDefaultWalls(5, 3.5),
   accessories: {

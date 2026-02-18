@@ -199,7 +199,7 @@ function RoofSheets({ config, beam, sheet, patioType, roofMat }: {
 
   if (isGable) {
     const gableH = Math.min(width, depth) * 0.18;
-    const gableFrameMat = createFrameMaterial(config.frameColor);
+    const gableFrameMat = createFrameMaterial(config.frameColor, config.frameFinish, config.reflectionStrength);
     return <GableRoof width={width} depth={totalDepth} roofY={roofY} gableHeight={gableH} sheetThick={sheetThick} roofMat={roofMat} frameMat={gableFrameMat} />;
   }
 
@@ -517,7 +517,9 @@ export default function PatioMesh({ config, onPartClick }: { config: PatioConfig
   const sheet = useMemo(() => selectSheet(material, colorbondType), [material, colorbondType]);
 
   // Use PBR materials from centralized library
-  const frameMat = useMemo(() => createFrameMaterial(frameColor), [frameColor]);
+  const frameFinish = config.frameFinish ?? 'gloss';
+  const reflectionStrength = config.reflectionStrength ?? 2.2;
+  const frameMat = useMemo(() => createFrameMaterial(frameColor, frameFinish, reflectionStrength), [frameColor, frameFinish, reflectionStrength]);
   const roofMat = useMemo(() => createRoofMaterial(material, frameColor), [frameColor, material]);
 
   const colSize = accessories.columns ? 140 : 100;

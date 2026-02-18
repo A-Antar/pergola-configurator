@@ -1,15 +1,14 @@
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
-import { OrbitControls, ContactShadows } from "@react-three/drei";
+import { OrbitControls, ContactShadows, Environment } from "@react-three/drei";
 import PatioMesh from "./PatioMesh";
 import WallEditorMesh from "./WallEditorMesh";
 import DebugOverlay from "./DebugOverlay";
-import type { PatioConfig, WallSide } from "@/types/configurator";
+import type { PatioConfig, WallSide, HdriPreset } from "@/types/configurator";
 import type { Part } from "@/lib/patio-engine";
 import { QUALITY_PRESETS, type QualityLevel } from "@/lib/materials";
 import { useRef, useCallback, useState, useEffect } from "react";
 import {
-  Camera, RotateCcw, Sun, Moon, Lightbulb, Eye,
-  Maximize2, RotateCw, Sparkles, Gauge,
+  Camera, RotateCcw, RotateCw, Eye,
 } from "lucide-react";
 import * as THREE from "three";
 
@@ -27,31 +26,11 @@ interface PatioSceneProps {
   onConfigChange?: (config: PatioConfig) => void;
 }
 
-type LightingPreset = 'day' | 'dusk' | 'studio';
 type CameraPreset = 'iso' | 'front' | 'left' | 'right' | 'under' | 'top';
 
-const LIGHTING: Record<LightingPreset, {
-  ambient: number; dir1: number; dir2: number; dir1Color: string; dir2Color: string;
-  env: string; fogColor: string; bgGradient: string;
-}> = {
-  day: {
-    ambient: 0.25, dir1: 1.8, dir2: 0.5,
-    dir1Color: '#fff5e6', dir2Color: '#c4d4ff',
-    env: 'city', fogColor: '#b8b0a4',
-    bgGradient: 'linear-gradient(180deg, #c8c2b8 0%, #a89f93 60%, #8a8278 100%)',
-  },
-  dusk: {
-    ambient: 0.12, dir1: 1.0, dir2: 0.25,
-    dir1Color: '#ffccaa', dir2Color: '#6677aa',
-    env: 'sunset', fogColor: '#8a7560',
-    bgGradient: 'linear-gradient(180deg, #9a7a60 0%, #6b5848 60%, #4a3a30 100%)',
-  },
-  studio: {
-    ambient: 0.4, dir1: 2.2, dir2: 0.8,
-    dir1Color: '#ffffff', dir2Color: '#e8e0d8',
-    env: 'studio', fogColor: '#c8c0b4',
-    bgGradient: 'linear-gradient(180deg, #d8d2cc 0%, #c0b8ac 60%, #a8a098 100%)',
-  },
+const HDRI_FILES: Record<HdriPreset, string> = {
+  day: '/hdr/bright_day_2k.hdr',
+  studio: '/hdr/studio_soft_2k.hdr',
 };
 
 /* ── Smooth camera animator ──────────────────────────────── */
@@ -62,17 +41,13 @@ function CameraAnimator({ targetPos, targetLookAt, enabled, onComplete }: {
   onComplete: () => void;
 }) {
   const { camera } = useThree();
-  const controlsRef = useRef<any>(null);
   const progress = useRef(0);
   const startPos = useRef(new THREE.Vector3());
-  const startTarget = useRef(new THREE.Vector3());
   const animating = useRef(false);
 
   useEffect(() => {
     if (enabled && targetPos && targetLookAt) {
       startPos.current.copy(camera.position);
-      // Get current target from orbit controls or default
-      startTarget.current.set(0, 1.4, 0);
       progress.current = 0;
       animating.current = true;
     }
@@ -82,9 +57,7 @@ function CameraAnimator({ targetPos, targetLookAt, enabled, onComplete }: {
     if (!animating.current || !targetPos || !targetLookAt) return;
     progress.current = Math.min(1, progress.current + delta * 2.5);
     const t = easeInOutCubic(progress.current);
-
     camera.position.lerpVectors(startPos.current, targetPos, t);
-
     if (progress.current >= 1) {
       animating.current = false;
       onComplete();
@@ -132,7 +105,6 @@ export default function PatioScene({
 }: PatioSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controlsRef = useRef<any>(null);
-  const [lighting, setLighting] = useState<LightingPreset>('day');
   const [showDims, setShowDims] = useState<'off' | 'key' | 'all'>('off');
   const [autoRotate, setAutoRotate] = useState(false);
   const [internalQuality, setInternalQuality] = useState<QualityLevel>('balanced');
@@ -144,7 +116,7 @@ export default function PatioScene({
   const [animating, setAnimating] = useState(false);
 
   const camDist = Math.max(config.width, config.depth) * 1.1 + 3;
-  const light = LIGHTING[lighting];
+  const hdriFile = HDRI_FILES[config.hdriPreset ?? 'day'];
 
   const handleQualityChange = useCallback((q: QualityLevel) => {
     setInternalQuality(q);
@@ -183,7 +155,6 @@ export default function PatioScene({
       under: [0, config.height * 0.8, 0],
       top: [0, 0, 0],
     };
-
     const pos = positions[preset];
     const look = lookAts[preset];
     setCamTarget({ pos: new THREE.Vector3(...pos), lookAt: new THREE.Vector3(...look) });
@@ -213,18 +184,18 @@ export default function PatioScene({
           toneMappingExposure: 1.1,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
-        style={{ background: light.bgGradient }}
+        style={{ background: 'linear-gradient(180deg, #c8c2b8 0%, #a89f93 60%, #8a8278 100%)' }}
       >
-        <fog attach="fog" args={[light.fogColor, camDist * 3, camDist * 6]} />
+        <fog attach="fog" args={['#b8b0a4', camDist * 3, camDist * 6]} />
 
-        {/* Ambient fill */}
-        <ambientLight intensity={light.ambient} />
+        {/* ── HDRI Environment — the ONLY source of reflections ── */}
+        <Environment files={hdriFile} background={false} />
 
-        {/* Key light — warm directional */}
+        {/* Sun directional (shadow caster) */}
         <directionalLight
           position={[8, 14, 6]}
-          intensity={light.dir1}
-          color={light.dir1Color}
+          intensity={1.8}
+          color="#fff5e6"
           castShadow={qSettings.shadows}
           shadow-mapSize-width={qSettings.shadowMapSize}
           shadow-mapSize-height={qSettings.shadowMapSize}
@@ -237,18 +208,15 @@ export default function PatioScene({
           shadow-normalBias={0.02}
         />
 
-        {/* Fill light — cool */}
+        {/* Soft fill (low) */}
         <directionalLight
           position={[-5, 8, -3]}
-          intensity={light.dir2}
-          color={light.dir2Color}
+          intensity={0.3}
+          color="#c4d4ff"
         />
 
-        {/* Step 2: Multi-directional rim/bounce lights for realistic aluminium reflections */}
-        <directionalLight position={[-8, 3, 8]} intensity={0.7} color="#d4dce8" />
-        <directionalLight position={[6, 2, -6]} intensity={0.5} color="#e0d8cc" />
-        <directionalLight position={[0, 10, 0]} intensity={0.4} color="#ffffff" />
-        <pointLight position={[0, 1.5, 0]} intensity={0.3} color="#f0e8d8" distance={15} />
+        {/* Ambient minimum — HDRI does the heavy lifting */}
+        <ambientLight intensity={0.15} />
 
         <PatioMesh config={config} onPartClick={onPartClick} />
 
@@ -257,7 +225,7 @@ export default function PatioScene({
           <DebugOverlay parts={debugParts} showLabels={showDebugLabels} showBoundingBoxes />
         )}
 
-        {/* Wall Editor overlay (when in wall edit mode or dimensions shown) */}
+        {/* Wall Editor overlay */}
         {(wallEditMode || showDims !== 'off') && onConfigChange && (
           <WallEditorMesh
             config={config}
@@ -294,7 +262,6 @@ export default function PatioScene({
           enabled={!animating && !autoRotate}
         />
 
-        {/* Camera animator */}
         <CameraAnimator
           targetPos={camTarget?.pos ?? null}
           targetLookAt={camTarget?.lookAt ?? null}
@@ -302,11 +269,7 @@ export default function PatioScene({
           onComplete={onAnimComplete}
         />
 
-        {/* Auto rotate */}
         <AutoRotate enabled={autoRotate} />
-
-        {/* Step 3: Strong hemisphere light acts as environment reflection source */}
-        <hemisphereLight args={['#d8e4f4', '#a09080', 0.8]} />
       </Canvas>
 
       {/* ── Camera presets ─────────────────────────────────── */}
@@ -324,29 +287,6 @@ export default function PatioScene({
 
       {/* ── Bottom toolbar ─────────────────────────────────── */}
       <div className="absolute bottom-3 right-3 flex gap-1.5">
-        {/* Lighting */}
-        <div className="flex gap-0.5 bg-background/70 backdrop-blur-md border border-border/50 rounded-lg p-0.5">
-          {([
-            { key: 'day' as const, icon: Sun, label: 'Day' },
-            { key: 'dusk' as const, icon: Moon, label: 'Dusk' },
-            { key: 'studio' as const, icon: Lightbulb, label: 'Studio' },
-          ]).map(({ key, icon: Icon, label }) => (
-            <button
-              key={key}
-              onClick={() => setLighting(key)}
-              title={label}
-              className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-[10px] font-medium transition-all duration-200 ${
-                lighting === key
-                  ? 'bg-primary/20 text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Icon className="w-3 h-3" />
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))}
-        </div>
-
         {/* Quality */}
         <div className="flex gap-0.5 bg-background/70 backdrop-blur-md border border-border/50 rounded-lg p-0.5">
           {(['high', 'balanced', 'low'] as QualityLevel[]).map((q) => (
