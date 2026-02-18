@@ -409,10 +409,11 @@ export function generateParts(config: PatioConfig, layout: DerivedLayout): Part[
     const sheetCenterZ = overhang / 2;
     const isInsulated = layout.sheet.insulated;
 
+    const roofRotation = isInsulated ? 0 : slopeAngle;
     parts.push({
       id: pid('roof-sheet'), kind: 'roof-sheet',
-      position: [0, roofY, sheetCenterZ], rotation: [slopeAngle, 0, 0],
-      dimensions: [width - 0.02, sheetThick, totalDepth + 0.1],
+      position: [0, roofY, sheetCenterZ], rotation: [roofRotation, 0, 0],
+      dimensions: [width - 0.02, sheetThick, totalDepth - 0.02],
       color: isInsulated ? '#e8e0d0' : config.frameColor,
       metalness: isInsulated ? 0.1 : 0.5,
       roughness: isInsulated ? 0.7 : 0.4,
@@ -430,8 +431,8 @@ export function generateParts(config: PatioConfig, layout: DerivedLayout): Part[
           parts.push({
             id: pid('rib'), kind: 'rib',
             position: [x, roofY + sheetThick / 2 + ribH / 2, sheetCenterZ],
-            rotation: [slopeAngle, 0, 0],
-            dimensions: [0.015, ribH, totalDepth + 0.08],
+            rotation: [roofRotation, 0, 0],
+            dimensions: [0.015, ribH, totalDepth - 0.02],
             color: isInsulated ? '#e8e0d0' : config.frameColor,
             metalness: isInsulated ? 0.1 : 0.5,
             roughness: isInsulated ? 0.7 : 0.4,
@@ -461,8 +462,8 @@ export function generateParts(config: PatioConfig, layout: DerivedLayout): Part[
       const sheetCZ = overhang / 2;
       parts.push({
         id: pid('underside-panel'), kind: 'underside-panel',
-        position: [0, height - bH - 0.002, sheetCZ], rotation: [slopeAngle, 0, 0],
-        dimensions: [width - 0.02, 0.003, totalDepth + 0.08],
+        position: [0, height - bH - 0.008, sheetCZ], rotation: [0, 0, 0],
+        dimensions: [width - 0.04, 0.003, totalDepth - 0.04],
         color: '#f5edd8', metalness: 0.05, roughness: 0.8, geometry: 'box',
       });
       // Panel joints
@@ -472,8 +473,8 @@ export function generateParts(config: PatioConfig, layout: DerivedLayout): Part[
         const x = -width / 2 + i * panelW;
         parts.push({
           id: pid('underside-joint'), kind: 'underside-joint',
-          position: [x, height - bH - 0.004, sheetCZ], rotation: [slopeAngle, 0, 0],
-          dimensions: [0.015, 0.008, totalDepth + 0.08],
+          position: [x, height - bH - 0.010, sheetCZ], rotation: [0, 0, 0],
+          dimensions: [0.015, 0.008, totalDepth - 0.04],
           color: '#f5edd8', metalness: 0.05, roughness: 0.8, geometry: 'box',
         });
       }
