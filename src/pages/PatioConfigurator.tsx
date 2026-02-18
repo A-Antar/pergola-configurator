@@ -128,7 +128,7 @@ export default function PatioConfigurator() {
         </button>
 
         {/* Right panel — Floating quote summary */}
-        <div className="absolute bottom-4 right-4 z-10 hidden sm:block w-[280px]">
+        <div className="absolute top-4 right-4 z-10 hidden sm:block w-[280px]">
           <div className="bg-background/85 backdrop-blur-xl border border-border/30 rounded-xl shadow-2xl shadow-background/50 overflow-hidden">
             <QuotePanel config={config} />
             <div className="px-4 pb-4">
