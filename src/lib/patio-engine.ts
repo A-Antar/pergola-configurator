@@ -412,7 +412,7 @@ export function generateParts(config: PatioConfig, layout: DerivedLayout): Part[
     parts.push({
       id: pid('roof-sheet'), kind: 'roof-sheet',
       position: [0, roofY, sheetCenterZ], rotation: [slopeAngle, 0, 0],
-      dimensions: [width + 0.15, sheetThick, totalDepth + 0.1],
+      dimensions: [width - 0.02, sheetThick, totalDepth + 0.1],
       color: isInsulated ? '#e8e0d0' : config.frameColor,
       metalness: isInsulated ? 0.1 : 0.5,
       roughness: isInsulated ? 0.7 : 0.4,
@@ -462,7 +462,7 @@ export function generateParts(config: PatioConfig, layout: DerivedLayout): Part[
       parts.push({
         id: pid('underside-panel'), kind: 'underside-panel',
         position: [0, height - bH - 0.002, sheetCZ], rotation: [slopeAngle, 0, 0],
-        dimensions: [width + 0.12, 0.003, totalDepth + 0.08],
+        dimensions: [width - 0.02, 0.003, totalDepth + 0.08],
         color: '#f5edd8', metalness: 0.05, roughness: 0.8, geometry: 'box',
       });
       // Panel joints
