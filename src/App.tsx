@@ -7,6 +7,13 @@ import Index from "./pages/Index";
 import PatioConfigurator from "./pages/PatioConfigurator";
 import QATestPanel from "./pages/QATestPanel";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
+import AppLayout from "./components/app/AppLayout";
+import ProjectsPage from "./pages/app/ProjectsPage";
+import ProjectDetailPage from "./pages/app/ProjectDetailPage";
+import AdminPage from "./pages/app/AdminPage";
+import AnalyticsPage from "./pages/app/AnalyticsPage";
+import SharePage from "./pages/SharePage";
 
 const queryClient = new QueryClient();
 
@@ -18,9 +25,16 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/configure/patios" element={<PatioConfigurator />} />
-          {/* Embed mode - same component, uses ?embed=1 query param */}
           <Route path="/embed/patios" element={<PatioConfigurator />} />
+          <Route path="/share/:token" element={<SharePage />} />
+          <Route path="/app" element={<AppLayout />}>
+            <Route path="projects" element={<ProjectsPage />} />
+            <Route path="projects/:id" element={<ProjectDetailPage />} />
+            <Route path="admin" element={<AdminPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
+          </Route>
           <Route path="/dev/qa" element={<QATestPanel />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
