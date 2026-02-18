@@ -221,33 +221,37 @@ function RoofSheets({ config, beam, sheet, patioType, roofMat }: {
   }
 
   const sheetCenterZ = overhang / 2;
+  const bW = mm(150);
+  const roofW = width - bW;
+  const roofD = totalDepth - bW;
+  const roofRotation = sheet.insulated ? 0 : slopeAngle;
   return (
     <>
-      <mesh position={[0, roofY, sheetCenterZ]} rotation={[slopeAngle, 0, 0]} material={roofMat} castShadow receiveShadow>
-        <boxGeometry args={[width + 0.15, sheetThick, totalDepth + 0.1]} />
+      <mesh position={[0, roofY, sheetCenterZ]} rotation={[roofRotation, 0, 0]} material={roofMat} castShadow receiveShadow>
+        <boxGeometry args={[roofW, sheetThick, roofD]} />
       </mesh>
 
       {sheet.ribHeight > 0 && (
         <SheetRibs
-          width={width}
-          depth={totalDepth}
+          width={roofW}
+          depth={roofD}
           roofY={roofY + sheetThick / 2}
           ribH={mm(sheet.ribHeight)}
           ribSpacing={mm(sheet.ribSpacing)}
           roofMat={roofMat}
           direction={patioType.sheetDirection}
-          slopeAngle={slopeAngle}
+          slopeAngle={roofRotation}
           overhang={overhang}
         />
       )}
 
       {sheet.insulated && (
         <>
-          <mesh position={[0, roofY - sheetThick / 2 - 0.002, sheetCenterZ]} rotation={[slopeAngle, 0, 0]}
+          <mesh position={[0, roofY - sheetThick / 2 - 0.008, sheetCenterZ]} rotation={[0, 0, 0]}
             material={MATERIALS.insulatedUnderside} receiveShadow>
-            <boxGeometry args={[width + 0.12, 0.003, totalDepth + 0.08]} />
+            <boxGeometry args={[roofW - 0.02, 0.003, roofD - 0.02]} />
           </mesh>
-          <InsulatedUnderside width={width} depth={totalDepth} roofY={roofY - sheetThick / 2} roofMat={MATERIALS.insulatedUnderside} slopeAngle={slopeAngle} overhang={overhang} />
+          <InsulatedUnderside width={roofW - 0.02} depth={roofD - 0.02} roofY={roofY - sheetThick / 2 - 0.008} roofMat={MATERIALS.insulatedUnderside} slopeAngle={0} overhang={overhang} />
         </>
       )}
     </>
@@ -265,7 +269,7 @@ function SheetRibs({ width, depth, roofY, ribH, ribSpacing, roofMat, direction, 
       const x = -width / 2 + i * ribSpacing;
       ribs.push(
         <mesh key={`rib-${i}`} position={[x, roofY + ribH / 2, overhang / 2]} rotation={[slopeAngle, 0, 0]} material={roofMat}>
-          <boxGeometry args={[0.015, ribH, depth + 0.08]} />
+          <boxGeometry args={[0.015, ribH, depth]} />
         </mesh>
       );
     }
@@ -274,8 +278,8 @@ function SheetRibs({ width, depth, roofY, ribH, ribSpacing, roofMat, direction, 
     for (let i = 0; i <= count; i++) {
       const z = -depth / 2 + i * ribSpacing;
       ribs.push(
-        <mesh key={`rib-${i}`} position={[0, roofY + ribH / 2, z]} material={roofMat}>
-          <boxGeometry args={[width + 0.08, ribH, 0.015]} />
+        <mesh key={`rib-${i}`} position={[0, roofY + ribH / 2, z + overhang / 2]} material={roofMat}>
+          <boxGeometry args={[width, ribH, 0.015]} />
         </mesh>
       );
     }
@@ -293,7 +297,7 @@ function InsulatedUnderside({ width, depth, roofY, roofMat, slopeAngle, overhang
     const x = -width / 2 + i * panelWidth;
     joints.push(
       <mesh key={`ins-j-${i}`} position={[x, roofY - 0.002, overhang / 2]} rotation={[slopeAngle, 0, 0]} material={roofMat}>
-        <boxGeometry args={[0.015, 0.008, depth + 0.08]} />
+        <boxGeometry args={[0.015, 0.008, depth]} />
       </mesh>
     );
   }
