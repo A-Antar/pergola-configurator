@@ -23,6 +23,7 @@ export default function PatioConfigurator() {
   const [wizardStep, setWizardStep] = useState(0);
   const [quality, setQuality] = useState<QualityLevel>('balanced');
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [quoteCollapsed, setQuoteCollapsed] = useState(false);
 
   const handlePartClick = useCallback((part: string) => {
     const step = PART_TO_STEP[part];
@@ -130,15 +131,28 @@ export default function PatioConfigurator() {
         {/* Right panel — Floating quote summary */}
         <div className="absolute top-4 right-4 z-10 hidden sm:block w-[280px]">
           <div className="bg-background/85 backdrop-blur-xl border border-border/30 rounded-xl shadow-2xl shadow-background/50 overflow-hidden">
-            <QuotePanel config={config} />
-            <div className="px-4 pb-4">
-              <button
-                onClick={() => setQuoteOpen(true)}
-                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors duration-200"
-              >
-                Get Free Quote
-              </button>
-            </div>
+            <button
+              onClick={() => setQuoteCollapsed(!quoteCollapsed)}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted/30 transition-colors duration-200"
+            >
+              <span className="font-display text-xs tracking-wide">Estimated Quote</span>
+              <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${quoteCollapsed ? '' : 'rotate-90'}`} />
+            </button>
+            {!quoteCollapsed && (
+              <>
+                <div className="px-4 pb-2">
+                  <QuotePanel config={config} />
+                </div>
+                <div className="px-4 pb-4">
+                  <button
+                    onClick={() => setQuoteOpen(true)}
+                    className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors duration-200"
+                  >
+                    Get Free Quote
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
