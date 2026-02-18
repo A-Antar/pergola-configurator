@@ -14,7 +14,8 @@ const wireframeMat = new THREE.MeshBasicMaterial({
   opacity: 0.6,
 });
 
-const labelColor = '#00ffaa';
+const labelColor = '#ffffff';
+const labelBg = '#000000';
 
 interface DebugOverlayProps {
   parts: Part[];
@@ -23,37 +24,44 @@ interface DebugOverlayProps {
 }
 
 export default function DebugOverlay({ parts, showLabels = true, showBoundingBoxes = true }: DebugOverlayProps) {
-  // Filter to structural parts only (skip ground/wall for clarity)
   const structural = parts.filter(p => !['ground', 'wall'].includes(p.kind));
 
   return (
     <group>
-      {structural.map((part) => (
-        <group key={part.id} position={part.position} rotation={part.rotation}>
-          {/* Bounding box wireframe */}
-          {showBoundingBoxes && (
-            <mesh material={wireframeMat}>
-              <boxGeometry args={part.dimensions} />
-            </mesh>
-          )}
+      {structural.map((part) => {
+        // Determine the longest axis to orient the label along it
+        const [dx, dy, dz] = part.dimensions;
+        const longest = Math.max(dx, dz);
+        const alongX = dx >= dz;
 
-          {/* Label */}
-          {showLabels && (
-            <Text
-              position={[0, part.dimensions[1] / 2 + 0.08, 0]}
-              fontSize={0.06}
-              color={labelColor}
-              anchorX="center"
-              anchorY="bottom"
-            >
-              {part.metadata?.label || `${part.kind} ${part.id.split('-').pop()}`}
-            </Text>
-          )}
+        return (
+          <group key={part.id} position={part.position} rotation={part.rotation}>
+            {showBoundingBoxes && (
+              <mesh material={wireframeMat}>
+                <boxGeometry args={part.dimensions} />
+              </mesh>
+            )}
 
-          {/* Mini axis gizmo */}
-          <axesHelper args={[0.15]} />
-        </group>
-      ))}
+            {showLabels && (
+              <Text
+                position={[0, dy / 2 + 0.05, 0]}
+                rotation={alongX ? [0, 0, 0] : [0, Math.PI / 2, 0]}
+                fontSize={Math.min(0.12, longest * 0.35)}
+                color={labelColor}
+                outlineColor={labelBg}
+                outlineWidth={0.012}
+                anchorX="center"
+                anchorY="bottom"
+                fontWeight="bold"
+              >
+                {part.metadata?.label || `${part.kind} ${part.id.split('-').pop()}`}
+              </Text>
+            )}
+
+            <axesHelper args={[0.15]} />
+          </group>
+        );
+      })}
     </group>
   );
 }
