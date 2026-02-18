@@ -410,10 +410,13 @@ export function generateParts(config: PatioConfig, layout: DerivedLayout): Part[
     const isInsulated = layout.sheet.insulated;
 
     const roofRotation = isInsulated ? 0 : slopeAngle;
+    // Roof must fit inside the inner edges of the side beams
+    const roofW = width - bW;
+    const roofD = totalDepth - bW;
     parts.push({
       id: pid('roof-sheet'), kind: 'roof-sheet',
       position: [0, roofY, sheetCenterZ], rotation: [roofRotation, 0, 0],
-      dimensions: [width - 0.02, sheetThick, totalDepth - 0.02],
+      dimensions: [roofW, sheetThick, roofD],
       color: isInsulated ? '#e8e0d0' : config.frameColor,
       metalness: isInsulated ? 0.1 : 0.5,
       roughness: isInsulated ? 0.7 : 0.4,
@@ -425,14 +428,15 @@ export function generateParts(config: PatioConfig, layout: DerivedLayout): Part[
       const ribH = mm(layout.sheet.ribHeight);
       const ribSpacing = mm(layout.sheet.ribSpacing);
       if (layout.patioType.sheetDirection === 'depth') {
-        const count = Math.floor(width / ribSpacing);
+        const innerLeft = -roofW / 2;
+        const count = Math.floor(roofW / ribSpacing);
         for (let i = 0; i <= count; i++) {
-          const x = -width / 2 + i * ribSpacing;
+          const x = innerLeft + i * ribSpacing;
           parts.push({
             id: pid('rib'), kind: 'rib',
             position: [x, roofY + sheetThick / 2 + ribH / 2, sheetCenterZ],
             rotation: [roofRotation, 0, 0],
-            dimensions: [0.015, ribH, totalDepth - 0.02],
+            dimensions: [0.015, ribH, roofD],
             color: isInsulated ? '#e8e0d0' : config.frameColor,
             metalness: isInsulated ? 0.1 : 0.5,
             roughness: isInsulated ? 0.7 : 0.4,
@@ -440,14 +444,14 @@ export function generateParts(config: PatioConfig, layout: DerivedLayout): Part[
           });
         }
       } else {
-        const count = Math.floor(totalDepth / ribSpacing);
+        const count = Math.floor(roofD / ribSpacing);
         for (let i = 0; i <= count; i++) {
-          const z = -totalDepth / 2 + i * ribSpacing;
+          const z = -roofD / 2 + i * ribSpacing;
           parts.push({
             id: pid('rib'), kind: 'rib',
-            position: [0, roofY + sheetThick / 2 + ribH / 2, z],
+            position: [0, roofY + sheetThick / 2 + ribH / 2, z + sheetCenterZ],
             rotation: [0, 0, 0],
-            dimensions: [width + 0.08, ribH, 0.015],
+            dimensions: [roofW, ribH, 0.015],
             color: isInsulated ? '#e8e0d0' : config.frameColor,
             metalness: isInsulated ? 0.1 : 0.5,
             roughness: isInsulated ? 0.7 : 0.4,
@@ -463,18 +467,19 @@ export function generateParts(config: PatioConfig, layout: DerivedLayout): Part[
       parts.push({
         id: pid('underside-panel'), kind: 'underside-panel',
         position: [0, height - bH - 0.008, sheetCZ], rotation: [0, 0, 0],
-        dimensions: [width - 0.04, 0.003, totalDepth - 0.04],
+        dimensions: [width - bW - 0.02, 0.003, totalDepth - bW - 0.02],
         color: '#f5edd8', metalness: 0.05, roughness: 0.8, geometry: 'box',
       });
       // Panel joints
       const panelW = 1.0;
-      const count = Math.floor(width / panelW);
+      const panelArea = width - bW - 0.02;
+      const count = Math.floor(panelArea / panelW);
       for (let i = 1; i < count; i++) {
-        const x = -width / 2 + i * panelW;
+        const x = -panelArea / 2 + i * panelW;
         parts.push({
           id: pid('underside-joint'), kind: 'underside-joint',
           position: [x, height - bH - 0.010, sheetCZ], rotation: [0, 0, 0],
-          dimensions: [0.015, 0.008, totalDepth - 0.04],
+          dimensions: [0.015, 0.008, totalDepth - bW - 0.02],
           color: '#f5edd8', metalness: 0.05, roughness: 0.8, geometry: 'box',
         });
       }
