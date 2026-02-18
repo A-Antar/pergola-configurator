@@ -39,13 +39,96 @@ function BasePlates({ positions, colSize, frameMat }: {
   );
 }
 
-function Columns({ positions, height, colSize, frameMat, decorative }: {
-  positions: [number, number][]; height: number; colSize: number; frameMat: THREE.Material; decorative: boolean;
+/**
+ * Hex-head self-tapping screw visual (10mm head, short cylinder + hex cap)
+ */
+function TekScrew({ position, rotation, material }: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  material: THREE.Material;
+}) {
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Screw head — hex washer head */}
+      <mesh material={material}>
+        <cylinderGeometry args={[0.006, 0.006, 0.004, 6]} />
+      </mesh>
+      {/* Shaft */}
+      <mesh position={[0, -0.006, 0]} material={material}>
+        <cylinderGeometry args={[0.003, 0.003, 0.012, 6]} />
+      </mesh>
+    </group>
+  );
+}
+
+/**
+ * Post bracket — L-shaped steel bracket that clips onto post top.
+ * The beam slides into the channel formed by the bracket flanges.
+ * Screwed with 10x25 hex self-tappers through bracket into beam flute.
+ *
+ *  Side view:
+ *   ┌─────────┐  ← top flange (sits under beam)
+ *   │         │
+ *   │  │   │  │  ← vertical flanges (screw into beam sides)
+ *   │  │   │  │
+ *   └──┘   └──┘
+ *      POST
+ */
+function PostBracket({ position, colSize, beamH, beamW }: {
+  position: [number, number, number];
+  colSize: number;
+  beamH: number;
+  beamW: number;
+}) {
+  const flangeThick = 0.004; // 4mm steel
+  const flangeHeight = beamH * 0.7; // bracket wraps 70% of beam height
+  const bracketWidth = mm(colSize) + 0.024; // slightly wider than post
+
+  return (
+    <group position={position}>
+      {/* Base plate — sits on top of post */}
+      <mesh material={MATERIALS.bracket}>
+        <boxGeometry args={[bracketWidth, flangeThick, bracketWidth]} />
+      </mesh>
+      {/* Left vertical flange */}
+      <mesh position={[-bracketWidth / 2 + flangeThick / 2, flangeHeight / 2, 0]} material={MATERIALS.bracket}>
+        <boxGeometry args={[flangeThick, flangeHeight, bracketWidth]} />
+      </mesh>
+      {/* Right vertical flange */}
+      <mesh position={[bracketWidth / 2 - flangeThick / 2, flangeHeight / 2, 0]} material={MATERIALS.bracket}>
+        <boxGeometry args={[flangeThick, flangeHeight, bracketWidth]} />
+      </mesh>
+      {/* Front vertical flange */}
+      <mesh position={[0, flangeHeight / 2, bracketWidth / 2 - flangeThick / 2]} material={MATERIALS.bracket}>
+        <boxGeometry args={[bracketWidth, flangeHeight, flangeThick]} />
+      </mesh>
+      {/* Back vertical flange */}
+      <mesh position={[0, flangeHeight / 2, -bracketWidth / 2 + flangeThick / 2]} material={MATERIALS.bracket}>
+        <boxGeometry args={[bracketWidth, flangeHeight, flangeThick]} />
+      </mesh>
+      {/* Tek screws — 2 per side (left/right flanges into beam) */}
+      {[-1, 1].map((side) => (
+        [0.3, 0.6].map((t, si) => (
+          <TekScrew
+            key={`screw-${side}-${si}`}
+            position={[side * (bracketWidth / 2 + 0.001), flangeHeight * t, 0]}
+            rotation={[0, 0, side * Math.PI / 2]}
+            material={MATERIALS.bracket}
+          />
+        ))
+      ))}
+    </group>
+  );
+}
+
+function Columns({ positions, height, colSize, frameMat, decorative, beamH, beamW }: {
+  positions: [number, number][]; height: number; colSize: number;
+  frameMat: THREE.Material; decorative: boolean;
+  beamH: number; beamW: number;
 }) {
   const s = mm(colSize);
   const capH = mm(BRACKETS.postCap.height);
-  const gap = 0.003; // 3mm gap between post and cap for visual separation
-  // Post stops short of full height to leave room for cap + gap
+  const gap = 0.003;
   const postH = height - capH - gap;
   return (
     <>
@@ -55,10 +138,17 @@ function Columns({ positions, height, colSize, frameMat, decorative }: {
           <mesh position={[x, postH / 2, z]} material={frameMat} castShadow>
             <boxGeometry args={[s, postH, s]} />
           </mesh>
-          {/* Post cap — sits on top of post with visible gap */}
+          {/* Post cap — fills gap between post top and beam */}
           <mesh position={[x, postH + gap + capH / 2, z]} material={MATERIALS.postCap}>
             <boxGeometry args={[s + 0.012, capH, s + 0.012]} />
           </mesh>
+          {/* Post bracket — L-shaped bracket on top where beam connects */}
+          <PostBracket
+            position={[x, height - beamH, z]}
+            colSize={colSize}
+            beamH={beamH}
+            beamW={beamW}
+          />
         </group>
       ))}
     </>
@@ -105,6 +195,58 @@ function WallBrackets({ config, beam, frameMat }: {
   return <>{brackets}</>;
 }
 
+/**
+ * Beam-to-beam bracket — L-shaped connector at corners.
+ * One flange slides INSIDE the incoming beam end.
+ * The other flange is screwed to the face of the through beam.
+ *
+ *  Top-down view (corner):
+ *
+ *   THROUGH BEAM (continuous)
+ *   ═══════════════════════
+ *         ┌──┐
+ *         │  │ ← bracket flange screwed to through beam face
+ *         │  │
+ *         │  │ ← bracket flange inside incoming beam
+ *         │  │
+ *   ══════╧══╧═══
+ *   INCOMING BEAM
+ */
+function BeamToBeamBracket({ position, rotation, beamH, beamW }: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  beamH: number;
+  beamW: number;
+}) {
+  const flangeThick = 0.004;
+  const flangeDepthInBeam = beamW * 0.6; // how far the flange goes inside beam
+  const flangeH = beamH * 0.85;
+
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Vertical plate — screwed to face of through beam */}
+      <mesh material={MATERIALS.beamBracket}>
+        <boxGeometry args={[flangeThick, flangeH, beamW + 0.01]} />
+      </mesh>
+      {/* Horizontal flange — slides inside incoming beam */}
+      <mesh position={[flangeDepthInBeam / 2, 0, 0]} material={MATERIALS.beamBracket}>
+        <boxGeometry args={[flangeDepthInBeam, flangeH, flangeThick]} />
+      </mesh>
+      {/* Tek screws on the face plate — 2 rows of 2 */}
+      {[-1, 1].map((vSide) =>
+        [-1, 1].map((hSide) => (
+          <TekScrew
+            key={`bb-screw-${vSide}-${hSide}`}
+            position={[-0.003, vSide * flangeH * 0.25, hSide * beamW * 0.25]}
+            rotation={[0, 0, Math.PI / 2]}
+            material={MATERIALS.bracket}
+          />
+        ))
+      )}
+    </group>
+  );
+}
+
 function Beams({ config, beam, patioType, frameMat }: {
   config: PatioConfig; beam: BeamSpec; patioType: PatioTypeSpec; frameMat: THREE.Material;
 }) {
@@ -113,29 +255,25 @@ function Beams({ config, beam, patioType, frameMat }: {
   const bW = mm(150);
   const beamY = height - bH / 2;
   const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
-  const gap = 0.004; // 4mm gap between beam ends and brackets
-
-  // Beam bracket dimensions
-  const bbW = mm(BRACKETS.beamToBeamBracket.width);
-  const bbH = mm(BRACKETS.beamToBeamBracket.height);
+  const gap = 0.006; // gap at beam ends for bracket visibility
 
   return (
     <>
-      {/* Back beam — shortened to leave gaps at corners for brackets */}
+      {/* Back beam — runs full width between side beams */}
       <mesh position={[0, beamY, -depth / 2]} material={frameMat} castShadow>
-        <boxGeometry args={[width - bbW - gap * 2, bH, bW]} />
+        <boxGeometry args={[width - bW - gap * 2, bH, bW]} />
       </mesh>
-      {/* Left side beam — shortened for bracket gaps */}
+      {/* Left side beam — continuous "through" beam */}
       <mesh position={[-width / 2, beamY, overhang / 2]} material={frameMat} castShadow>
-        <boxGeometry args={[bW, bH, depth + overhang - bbW - gap * 2]} />
+        <boxGeometry args={[bW, bH, depth + overhang]} />
       </mesh>
-      {/* Right side beam — shortened for bracket gaps */}
+      {/* Right side beam — continuous "through" beam */}
       <mesh position={[width / 2, beamY, overhang / 2]} material={frameMat} castShadow>
-        <boxGeometry args={[bW, bH, depth + overhang - bbW - gap * 2]} />
+        <boxGeometry args={[bW, bH, depth + overhang]} />
       </mesh>
-      {/* Front beam — shortened for bracket gaps */}
+      {/* Front beam — runs between side beams */}
       <mesh position={[0, beamY, depth / 2 + overhang]} material={frameMat} castShadow>
-        <boxGeometry args={[width - bbW - gap * 2, bH, bW]} />
+        <boxGeometry args={[width - bW - gap * 2, bH, bW]} />
       </mesh>
 
       {beam.fluted && (
@@ -151,17 +289,35 @@ function Beams({ config, beam, patioType, frameMat }: {
         </>
       )}
 
-      {/* Beam-to-beam brackets at each corner — distinct material */}
-      {[
-        [-width / 2, -depth / 2],
-        [width / 2, -depth / 2],
-        [-width / 2, depth / 2 + overhang],
-        [width / 2, depth / 2 + overhang],
-      ].map(([x, z], i) => (
-        <mesh key={`bb-${i}`} position={[x, beamY, z]} material={MATERIALS.beamBracket}>
-          <boxGeometry args={[bbW + 0.008, bbH, bW + 0.008]} />
-        </mesh>
-      ))}
+      {/* Beam-to-beam brackets at corners — L-shaped, incoming beam butts into through beam */}
+      {/* Back-left: back beam incoming from right, left beam is through */}
+      <BeamToBeamBracket
+        position={[-width / 2 + bW / 2 + 0.002, beamY, -depth / 2]}
+        rotation={[0, 0, 0]}
+        beamH={bH}
+        beamW={bW}
+      />
+      {/* Back-right: back beam incoming from left, right beam is through */}
+      <BeamToBeamBracket
+        position={[width / 2 - bW / 2 - 0.002, beamY, -depth / 2]}
+        rotation={[0, Math.PI, 0]}
+        beamH={bH}
+        beamW={bW}
+      />
+      {/* Front-left: front beam incoming from right, left beam is through */}
+      <BeamToBeamBracket
+        position={[-width / 2 + bW / 2 + 0.002, beamY, depth / 2 + overhang]}
+        rotation={[0, 0, 0]}
+        beamH={bH}
+        beamW={bW}
+      />
+      {/* Front-right: front beam incoming from left, right beam is through */}
+      <BeamToBeamBracket
+        position={[width / 2 - bW / 2 - 0.002, beamY, depth / 2 + overhang]}
+        rotation={[0, Math.PI, 0]}
+        beamH={bH}
+        beamW={bW}
+      />
     </>
   );
 }
@@ -626,7 +782,7 @@ export default function PatioMesh({ config, onPartClick }: { config: PatioConfig
         <BasePlates positions={posts} colSize={colSize} frameMat={frameMat} />
       </group>
       <group onClick={(e) => { e.stopPropagation(); onPartClick?.('columns'); }}>
-        <Columns positions={posts} height={height} colSize={colSize} frameMat={frameMat} decorative={accessories.columns} />
+        <Columns positions={posts} height={height} colSize={colSize} frameMat={frameMat} decorative={accessories.columns} beamH={mm(beam.profileHeight)} beamW={mm(150)} />
         {accessories.columns && <DecorativeColumns positions={posts} height={height} frameMat={frameMat} />}
       </group>
       {!isFreestanding && <WallBrackets config={config} beam={beam} frameMat={frameMat} />}
