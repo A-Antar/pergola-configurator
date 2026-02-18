@@ -1,6 +1,21 @@
 export type ProductLine = 'patios' | 'louvre' | 'carports' | 'sunrooms' | 'decking' | 'ezi-slat';
 
 export type AttachmentSide = 'back' | 'left' | 'right';
+export type WallSide = 'back' | 'left' | 'right' | 'front';
+
+export interface WallConfig {
+  enabled: boolean;
+  /** Wall height in mm */
+  height: number;
+  /** Wall thickness in mm */
+  thickness: number;
+  /** Offset from default position in mm (positive = outward) */
+  offset: number;
+  /** Wall length in mm (auto-calculated from patio dims, user can override) */
+  length: number;
+}
+
+export type WallsConfig = Record<WallSide, WallConfig>;
 
 export interface PatioConfig {
   material: 'insulated' | 'colorbond';
@@ -12,12 +27,26 @@ export interface PatioConfig {
   height: number;
   frameColor: string;
   attachedSides: AttachmentSide[];
+  walls: WallsConfig;
   accessories: {
     lighting: boolean;
     fans: boolean;
     gutters: boolean;
     designerBeam: boolean;
     columns: boolean;
+  };
+}
+
+export function createDefaultWall(lengthMm: number): WallConfig {
+  return { enabled: false, height: 2800, thickness: 200, offset: 0, length: lengthMm };
+}
+
+export function createDefaultWalls(widthM: number, depthM: number): WallsConfig {
+  return {
+    back: { enabled: true, height: 2800, thickness: 200, offset: 0, length: Math.round(widthM * 1000) },
+    left: { enabled: false, height: 2800, thickness: 200, offset: 0, length: Math.round(depthM * 1000) },
+    right: { enabled: false, height: 2800, thickness: 200, offset: 0, length: Math.round(depthM * 1000) },
+    front: { enabled: false, height: 2800, thickness: 200, offset: 0, length: Math.round(widthM * 1000) },
   };
 }
 
@@ -42,6 +71,7 @@ export const DEFAULT_PATIO_CONFIG: PatioConfig = {
   height: 2.8,
   frameColor: '#2d2c2b',
   attachedSides: ['back'],
+  walls: createDefaultWalls(5, 3.5),
   accessories: {
     lighting: false,
     fans: false,

@@ -5,8 +5,9 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
-import type { PatioConfig, AttachmentSide } from "@/types/configurator";
+import type { PatioConfig, AttachmentSide, WallSide } from "@/types/configurator";
 import { FRAME_COLORS } from "@/types/configurator";
+import WallEditorPanel from "./WallEditorPanel";
 
 interface ConfigWizardProps {
   config: PatioConfig;
@@ -14,11 +15,13 @@ interface ConfigWizardProps {
   onGetQuote: () => void;
   activeStep?: number;
   onStepChange?: (step: number) => void;
+  selectedWall?: WallSide | null;
+  onSelectWall?: (side: WallSide | null) => void;
 }
 
-const STEPS = ['Material', 'Style', 'Dimensions', 'Colour', 'Accessories'];
+const STEPS = ['Material', 'Style', 'Dimensions', 'Colour', 'Walls', 'Accessories'];
 
-export default function ConfigWizard({ config, onChange, onGetQuote, activeStep, onStepChange }: ConfigWizardProps) {
+export default function ConfigWizard({ config, onChange, onGetQuote, activeStep, onStepChange, selectedWall, onSelectWall }: ConfigWizardProps) {
   const [internalStep, setInternalStep] = useState(0);
   const step = activeStep ?? internalStep;
   const setStep = (s: number) => { setInternalStep(s); onStepChange?.(s); };
@@ -141,41 +144,11 @@ export default function ConfigWizard({ config, onChange, onGetQuote, activeStep,
               </div>
             </div>
             {config.style !== 'free-standing' && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <h3 className="font-display text-lg font-semibold text-foreground">Attached Sides</h3>
-                  <p className="text-xs text-muted-foreground">Select which sides connect to the house walls</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { key: 'back' as AttachmentSide, label: 'Back' },
-                      { key: 'left' as AttachmentSide, label: 'Left' },
-                      { key: 'right' as AttachmentSide, label: 'Right' },
-                    ]).map(({ key, label }) => {
-                      const active = (config.attachedSides || ['back']).includes(key);
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => {
-                            const sides = config.attachedSides || ['back'];
-                            const next = active
-                              ? sides.filter(s => s !== key)
-                              : [...sides, key];
-                            update({ attachedSides: next.length > 0 ? next : ['back'] });
-                          }}
-                          className={`p-2 rounded-lg border text-sm font-medium transition-all ${
-                            active
-                              ? 'border-primary bg-primary/10 text-foreground'
-                              : 'border-border text-muted-foreground hover:border-primary/40'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
+              <div className="bg-muted/50 rounded-lg p-3 mt-2">
+                <p className="text-xs text-muted-foreground">
+                  Configure wall attachments in the <button onClick={() => setStep(4)} className="text-primary font-medium hover:underline">Walls</button> step.
+                </p>
+              </div>
             )}
           </div>
         )}
@@ -234,6 +207,15 @@ export default function ConfigWizard({ config, onChange, onGetQuote, activeStep,
         )}
 
         {step === 4 && (
+          <WallEditorPanel
+            config={config}
+            onChange={onChange}
+            selectedWall={selectedWall ?? null}
+            onSelectWall={onSelectWall ?? (() => {})}
+          />
+        )}
+
+        {step === 5 && (
           <div className="space-y-4">
             <h3 className="font-display text-lg font-semibold text-foreground">Accessories</h3>
             {([
