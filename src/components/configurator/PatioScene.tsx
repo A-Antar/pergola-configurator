@@ -187,7 +187,7 @@ export default function PatioScene({
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         style={{ background: sceneMode === 'studio'
-          ? 'linear-gradient(180deg, #c8c2b8 0%, #a89f93 60%, #8a8278 100%)'
+          ? 'linear-gradient(180deg, #4a90d9 0%, #7ec8e3 25%, #a8dce0 40%, #8cc63f 55%, #5da832 70%, #4a9a2b 100%)'
           : 'transparent'
         }}
       >
