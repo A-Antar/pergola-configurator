@@ -1,5 +1,5 @@
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
-import { OrbitControls, Environment, ContactShadows } from "@react-three/drei";
+import { OrbitControls, ContactShadows } from "@react-three/drei";
 import PatioMesh from "./PatioMesh";
 import WallEditorMesh from "./WallEditorMesh";
 import DebugOverlay from "./DebugOverlay";
@@ -306,7 +306,8 @@ export default function PatioScene({
         {/* Auto rotate */}
         <AutoRotate enabled={autoRotate} />
 
-        <Environment preset={light.env as any} />
+        {/* Removed Environment preset - HDR fetch fails in preview */}
+        <hemisphereLight args={['#c8d4e8', '#8a7560', 0.4]} />
       </Canvas>
 
       {/* ── Camera presets ─────────────────────────────────── */}

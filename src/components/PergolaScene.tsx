@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment, ContactShadows } from "@react-three/drei";
+import { OrbitControls, ContactShadows } from "@react-three/drei";
 import PergolaMesh from "./PergolaMesh";
 
 interface PergolaSceneProps {
@@ -53,7 +53,7 @@ export default function PergolaScene({ config }: PergolaSceneProps) {
         target={[0, config.height / 2, 0]}
       />
 
-      <Environment preset="city" />
+      <hemisphereLight args={['#c8d4e8', '#8a7560', 0.4]} />
     </Canvas>
   );
 }
