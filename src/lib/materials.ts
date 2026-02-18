@@ -127,10 +127,32 @@ export const MATERIALS = {
   }),
 
   bracket: createPBRMaterial({
-    color: '#4a4a4a',
-    metalness: 0.7,
-    roughness: 0.35,
-    envMapIntensity: 1.5,
+    color: '#2c2c2c',
+    metalness: 0.85,
+    roughness: 0.15,
+    envMapIntensity: 2.5,
+    clearcoat: 0.8,
+    clearcoatRoughness: 0.05,
+  }),
+
+  /** Beam-to-beam bracket — slightly lighter to distinguish from post bracket */
+  beamBracket: createPBRMaterial({
+    color: '#383838',
+    metalness: 0.9,
+    roughness: 0.12,
+    envMapIntensity: 2.8,
+    clearcoat: 0.9,
+    clearcoatRoughness: 0.04,
+  }),
+
+  /** Post cap — distinct dark gunmetal */
+  postCap: createPBRMaterial({
+    color: '#222222',
+    metalness: 0.8,
+    roughness: 0.2,
+    envMapIntensity: 2.2,
+    clearcoat: 0.7,
+    clearcoatRoughness: 0.08,
   }),
 
   insulatedUnderside: createPBRMaterial({
