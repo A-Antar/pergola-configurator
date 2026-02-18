@@ -46,8 +46,7 @@ export default function QuotePanel({ config }: QuotePanelProps) {
   const { min, max, breakdown } = calculateEstimate(config);
 
   return (
-    <div className="bg-card border border-border rounded-lg p-4 space-y-3">
-      <h4 className="font-display text-sm font-semibold text-foreground">Estimated Quote</h4>
+    <div className="space-y-3">
 
       <div className="space-y-1.5">
         {breakdown.map((item, i) => (
