@@ -106,7 +106,7 @@ export default function PatioConfigurator() {
           className={`relative z-10 shrink-0 transition-all duration-300 ease-in-out ${
             panelCollapsed
               ? 'w-0 opacity-0 pointer-events-none'
-              : 'w-full sm:w-[340px] lg:w-[360px]'
+              : 'w-[85%] sm:w-[340px] lg:w-[360px]'
           }`}
         >
           <div className="h-full bg-background/85 backdrop-blur-xl border-r border-border/30 flex flex-col shadow-2xl shadow-background/50">
