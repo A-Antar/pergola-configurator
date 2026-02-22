@@ -14,6 +14,7 @@ import ProjectDetailPage from "./pages/app/ProjectDetailPage";
 import AdminPage from "./pages/app/AdminPage";
 import AnalyticsPage from "./pages/app/AnalyticsPage";
 import SharePage from "./pages/SharePage";
+import DeckingConfigurator from "./pages/DeckingConfigurator";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/configure/patios" element={<PatioConfigurator />} />
           <Route path="/embed/patios" element={<PatioConfigurator />} />
+          <Route path="/configure/decking" element={<DeckingConfigurator />} />
           <Route path="/share/:token" element={<SharePage />} />
           <Route path="/app" element={<AppLayout />}>
             <Route path="projects" element={<ProjectsPage />} />
