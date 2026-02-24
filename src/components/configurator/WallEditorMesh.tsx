@@ -27,20 +27,17 @@ function DimensionSlider({ value, min, max, step, unit, onClose, onChange }: {
   onChange: (v: number) => void;
 }) {
   const [localValue, setLocalValue] = useState(value);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync local when external value changes (e.g. from another source)
   useEffect(() => { setLocalValue(value); }, [value]);
 
   const handleChange = useCallback((v: number) => {
     setLocalValue(v);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => onChange(v), 500);
-  }, [onChange]);
-
-  useEffect(() => {
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, []);
+
+  const handleRelease = useCallback(() => {
+    onChange(localValue);
+  }, [onChange, localValue]);
 
   return (
     <div
@@ -66,6 +63,8 @@ function DimensionSlider({ value, min, max, step, unit, onClose, onChange }: {
         step={step}
         value={localValue}
         onChange={(e) => handleChange(parseFloat(e.target.value))}
+        onMouseUp={handleRelease}
+        onTouchEnd={handleRelease}
         className="w-full accent-primary h-2 cursor-pointer"
       />
       <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
