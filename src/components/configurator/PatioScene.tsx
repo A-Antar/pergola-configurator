@@ -24,6 +24,7 @@ interface PatioSceneProps {
   selectedWall?: WallSide | null;
   onSelectWall?: (side: WallSide | null) => void;
   onConfigChange?: (config: PatioConfig) => void;
+  canvasRef?: React.RefObject<HTMLCanvasElement>;
 }
 
 type CameraPreset = 'iso' | 'front' | 'left' | 'right' | 'under' | 'top';
@@ -122,8 +123,10 @@ export default function PatioScene({
   config, onPartClick, debugMode, debugParts, showDebugLabels,
   quality: externalQuality, onQualityChange,
   wallEditMode, selectedWall, onSelectWall, onConfigChange,
+  canvasRef: externalCanvasRef,
 }: PatioSceneProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const internalCanvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = externalCanvasRef ?? internalCanvasRef;
   const controlsRef = useRef<any>(null);
   const [showDims, setShowDims] = useState<'off' | 'key' | 'all'>('off');
   const [autoRotate, setAutoRotate] = useState(false);

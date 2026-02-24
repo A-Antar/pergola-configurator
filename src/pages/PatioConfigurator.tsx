@@ -1,4 +1,4 @@
-import { useState, useCallback, Suspense } from "react";
+import { useState, useCallback, useRef, Suspense } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { X, Check } from "lucide-react";
 import PatioScene from "@/components/configurator/PatioScene";
@@ -27,6 +27,7 @@ export default function PatioConfigurator() {
   const [quality, setQuality] = useState<QualityLevel>('balanced');
   const [selectedWall, setSelectedWall] = useState<WallSide | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handlePartClick = useCallback((part: string) => {
     const step = PART_TO_STEP[part];
@@ -132,6 +133,7 @@ export default function PatioConfigurator() {
               selectedWall={selectedWall}
               onSelectWall={setSelectedWall}
               onConfigChange={setConfig}
+              canvasRef={canvasRef}
             />
           </Suspense>
         </div>
@@ -192,7 +194,7 @@ export default function PatioConfigurator() {
         </div>
       </div>
 
-      <LeadCaptureDialog open={quoteOpen} onOpenChange={setQuoteOpen} config={config} />
+      <LeadCaptureDialog open={quoteOpen} onOpenChange={setQuoteOpen} config={config} canvasRef={canvasRef} />
     </div>
   );
 }
