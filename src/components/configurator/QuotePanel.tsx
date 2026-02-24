@@ -33,6 +33,31 @@ export function calculateEstimate(config: PatioConfig): { min: number; max: numb
     }
   });
 
+  // Foundation costs
+  if (config.foundation) {
+    const f = config.foundation;
+    const colsAcross = Math.floor(config.width / 1.8) + 1;
+    const colsDeep = Math.floor(config.depth / 1.8) + 1;
+    const columnCount = colsAcross * colsDeep;
+
+    if (f.type === 'landscape') {
+      if (columnCount <= 2) {
+        breakdown.push({ label: `Hand excavation (${columnCount} holes, 6hrs)`, amount: Math.round(f.labourRate * 6) });
+      } else {
+        breakdown.push({ label: 'Excavator 8hrs + float', amount: Math.round(f.excavatorRate * 8 + f.floatCharge) });
+      }
+    } else if (f.type === 'concrete-thick') {
+      breakdown.push({ label: `Brackets (×${columnCount})`, amount: Math.round(columnCount * f.bracketCostEach) });
+      breakdown.push({ label: 'Chemset + bolts', amount: Math.round(f.chemsetCost) });
+      breakdown.push({ label: 'Foundation labour (6hr min)', amount: Math.round(f.labourRate * 6) });
+    } else if (f.type === 'concrete-thin') {
+      const volumePerHole = Math.PI * 0.3 * 0.3 * 0.6;
+      const totalVolume = volumePerHole * columnCount;
+      breakdown.push({ label: `Core drill + concrete (${columnCount} holes, ${totalVolume.toFixed(2)}m³)`, amount: Math.round(totalVolume * f.concreteCostPerM3) });
+      breakdown.push({ label: 'Foundation labour (6hr min)', amount: Math.round(f.labourRate * 6) });
+    }
+  }
+
   const total = breakdown.reduce((s, b) => s + b.amount, 0);
 
   return {
