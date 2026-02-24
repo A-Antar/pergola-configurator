@@ -184,8 +184,9 @@ export default function PatioScene({
           preserveDrawingBuffer: true,
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.1,
+          toneMappingExposure: 1.2,
           outputColorSpace: THREE.SRGBColorSpace,
+          pixelRatio: Math.min(window.devicePixelRatio, 2),
         }}
         style={{ background: sceneMode === 'studio'
           ? 'linear-gradient(180deg, #d4e6f1 0%, #e8f0f5 25%, #f0f4f0 40%, #c5ddb8 55%, #a8cc8f 70%, #8fbe72 100%)'
@@ -261,7 +262,7 @@ export default function PatioScene({
           scale={30}
           blur={qSettings.contactShadowBlur}
           far={12}
-          resolution={quality === 'high' ? 512 : 256}
+          resolution={quality === 'high' ? 1024 : quality === 'balanced' ? 512 : 256}
         />
 
         <OrbitControls
