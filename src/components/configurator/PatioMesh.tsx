@@ -680,9 +680,9 @@ const FOUNDATION_MATERIALS = {
   grass: new THREE.MeshStandardMaterial({ color: new THREE.Color('#4a6b35'), roughness: 0.85, metalness: 0 }),
   concrete: new THREE.MeshStandardMaterial({ color: new THREE.Color('#b0aca6'), roughness: 0.75, metalness: 0.05 }),
   concreteCracked: new THREE.MeshStandardMaterial({ color: new THREE.Color('#a09a92'), roughness: 0.8, metalness: 0.03 }),
-  concreteDark: new THREE.MeshStandardMaterial({ color: new THREE.Color('#8a8580'), roughness: 0.85, metalness: 0.03, transparent: true, opacity: 0.5 }),
+  concreteDark: new THREE.MeshStandardMaterial({ color: new THREE.Color('#8a8580'), roughness: 0.85, metalness: 0.03 }),
   crackLine: new THREE.MeshStandardMaterial({ color: new THREE.Color('#6b6560'), roughness: 0.9, metalness: 0, depthWrite: false }),
-  holeEdge: new THREE.MeshStandardMaterial({ color: new THREE.Color('#7a7570'), roughness: 0.7, metalness: 0.05, transparent: true, opacity: 0.5 }),
+  holeEdge: new THREE.MeshStandardMaterial({ color: new THREE.Color('#7a7570'), roughness: 0.7, metalness: 0.05 }),
 };
 
 function FoundationBase({ foundationType, width, depth, postPositions, colSize }: {
