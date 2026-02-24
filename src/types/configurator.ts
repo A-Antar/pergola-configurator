@@ -1,4 +1,6 @@
 export type ProductLine = 'patios' | 'louvre' | 'carports' | 'sunrooms' | 'decking' | 'ezi-slat';
+import type { FoundationConfig } from "@/types/decking";
+export type { FoundationConfig } from "@/types/decking";
 
 export type AttachmentSide = 'back' | 'left' | 'right';
 export type WallSide = 'back' | 'left' | 'right' | 'front';
@@ -34,6 +36,7 @@ export interface PatioConfig {
   hdriPreset: HdriPreset;
   attachedSides: AttachmentSide[];
   walls: WallsConfig;
+  foundation: FoundationConfig;
   accessories: {
     lighting: boolean;
     fans: boolean;
@@ -81,6 +84,15 @@ export const DEFAULT_PATIO_CONFIG: PatioConfig = {
   hdriPreset: 'day',
   attachedSides: ['back'],
   walls: createDefaultWalls(5, 3.5),
+  foundation: {
+    type: 'landscape',
+    excavatorRate: 200,
+    floatCharge: 600,
+    bracketCostEach: 25,
+    chemsetCost: 120,
+    labourRate: 110,
+    concreteCostPerM3: 250,
+  },
   accessories: {
     lighting: false,
     fans: false,

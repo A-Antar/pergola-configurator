@@ -14,8 +14,8 @@ const PART_TO_STEP: Record<string, number> = {
   columns: 2,
   beams: 2,
   roof: 0,
-  walls: 4,
-  accessories: 5,
+  walls: 5,
+  accessories: 6,
 };
 
 export default function PatioConfigurator() {
@@ -93,7 +93,7 @@ export default function PatioConfigurator() {
               onPartClick={handlePartClick}
               quality={quality}
               onQualityChange={setQuality}
-              wallEditMode={wizardStep === 4}
+              wallEditMode={wizardStep === 5}
               selectedWall={selectedWall}
               onSelectWall={setSelectedWall}
               onConfigChange={setConfig}
