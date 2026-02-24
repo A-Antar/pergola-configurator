@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import type { PatioConfig, AttachmentSide } from "@/types/configurator";
+import type { FoundationType } from "@/types/decking";
 import {
   selectPatioType,
   selectBeamForSpan,
@@ -673,7 +674,135 @@ function DecorativeColumns({ positions, height, frameMat }: {
   );
 }
 
+/* ── Foundation Base Visual ──────────────────────────────────── */
+
+const FOUNDATION_MATERIALS = {
+  soil: new THREE.MeshStandardMaterial({ color: new THREE.Color('#5a4a3a'), roughness: 0.95, metalness: 0 }),
+  soilDark: new THREE.MeshStandardMaterial({ color: new THREE.Color('#3d3028'), roughness: 0.9, metalness: 0 }),
+  grass: new THREE.MeshStandardMaterial({ color: new THREE.Color('#4a6b35'), roughness: 0.85, metalness: 0 }),
+  concrete: new THREE.MeshStandardMaterial({ color: new THREE.Color('#b0aca6'), roughness: 0.75, metalness: 0.05 }),
+  concreteCracked: new THREE.MeshStandardMaterial({ color: new THREE.Color('#a09a92'), roughness: 0.8, metalness: 0.03 }),
+  crackLine: new THREE.MeshStandardMaterial({ color: new THREE.Color('#6b6560'), roughness: 0.9, metalness: 0 }),
+  holeEdge: new THREE.MeshStandardMaterial({ color: new THREE.Color('#7a7570'), roughness: 0.7, metalness: 0.05 }),
+};
+
+function FoundationBase({ foundationType, width, depth, postPositions, colSize }: {
+  foundationType: FoundationType;
+  width: number;
+  depth: number;
+  postPositions: [number, number][];
+  colSize: number;
+}) {
+  const padW = width + 4;
+  const padD = depth + 4;
+
+  if (foundationType === 'landscape') {
+    // Soil/grass ground with excavation holes at post positions
+    return (
+      <group>
+        {/* Grass layer */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={FOUNDATION_MATERIALS.grass} receiveShadow>
+          <planeGeometry args={[padW, padD]} />
+        </mesh>
+        {/* Soil area under the patio footprint */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.005, 0]} material={FOUNDATION_MATERIALS.soil} receiveShadow>
+          <planeGeometry args={[width + 0.6, depth + 0.6]} />
+        </mesh>
+        {/* Excavation holes (600×600×600mm) at each post */}
+        {postPositions.map(([x, z], i) => (
+          <group key={`hole-${i}`} position={[x, 0, z]}>
+            {/* Hole depression */}
+            <mesh position={[0, -0.3, 0]} material={FOUNDATION_MATERIALS.soilDark}>
+              <boxGeometry args={[0.6, 0.6, 0.6]} />
+            </mesh>
+            {/* Hole rim */}
+            <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.soilDark}>
+              <ringGeometry args={[0.25, 0.35, 8]} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+    );
+  }
+
+  if (foundationType === 'concrete-thick') {
+    // Thick concrete slab with bracket mounting points
+    const slabThick = 0.15;
+    return (
+      <group>
+        {/* Surrounding ground */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={FOUNDATION_MATERIALS.grass} receiveShadow>
+          <planeGeometry args={[padW, padD]} />
+        </mesh>
+        {/* Concrete slab */}
+        <mesh position={[0, -slabThick / 2, 0]} material={FOUNDATION_MATERIALS.concrete} receiveShadow castShadow>
+          <boxGeometry args={[width + 1.0, slabThick, depth + 1.0]} />
+        </mesh>
+        {/* Slab edge highlight */}
+        <mesh position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.concrete} receiveShadow>
+          <planeGeometry args={[width + 1.0, depth + 1.0]} />
+        </mesh>
+        {/* Bracket mounting points at each post */}
+        {postPositions.map(([x, z], i) => (
+          <group key={`bracket-${i}`} position={[x, 0.002, z]}>
+            {/* Bracket base plate indicator */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.holeEdge}>
+              <planeGeometry args={[mm(colSize) + 0.04, mm(colSize) + 0.04]} />
+            </mesh>
+            {/* Bolt holes (4 corners) */}
+            {[[-1,-1],[-1,1],[1,-1],[1,1]].map(([dx, dz], bi) => (
+              <mesh key={`bolt-${bi}`} position={[dx * 0.04, 0.003, dz * 0.04]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.crackLine}>
+                <circleGeometry args={[0.008, 8]} />
+              </mesh>
+            ))}
+          </group>
+        ))}
+      </group>
+    );
+  }
+
+  // concrete-thin: Thin cracked slab with core-drilled holes
+  const slabThick = 0.1;
+  return (
+    <group>
+      {/* Surrounding ground */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={FOUNDATION_MATERIALS.grass} receiveShadow>
+        <planeGeometry args={[padW, padD]} />
+      </mesh>
+      {/* Thin concrete slab */}
+      <mesh position={[0, -slabThick / 2, 0]} material={FOUNDATION_MATERIALS.concreteCracked} receiveShadow castShadow>
+        <boxGeometry args={[width + 1.0, slabThick, depth + 1.0]} />
+      </mesh>
+      {/* Crack lines across the slab */}
+      {Array.from({ length: 5 }).map((_, i) => {
+        const angle = (i * 37 + 15) * (Math.PI / 180);
+        const cx = (i - 2) * 0.8;
+        const cz = (i % 2 === 0 ? 0.3 : -0.4) * (i - 2);
+        return (
+          <mesh key={`crack-${i}`} position={[cx, 0.002, cz]} rotation={[-Math.PI / 2, angle, 0]} material={FOUNDATION_MATERIALS.crackLine}>
+            <planeGeometry args={[0.008, 1.5 + i * 0.3]} />
+          </mesh>
+        );
+      })}
+      {/* Core-drilled holes at each post (600mm diameter) */}
+      {postPositions.map(([x, z], i) => (
+        <group key={`core-${i}`} position={[x, 0, z]}>
+          {/* Drilled hole — cylindrical cutout visual */}
+          <mesh position={[0, -0.3, 0]} material={FOUNDATION_MATERIALS.soilDark}>
+            <cylinderGeometry args={[0.3, 0.3, 0.6, 16]} />
+          </mesh>
+          {/* Hole rim on slab surface */}
+          <mesh position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.holeEdge}>
+            <ringGeometry args={[0.28, 0.34, 16]} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
 /* ── Main component ─────────────────────────────────────────── */
+
 
 export default function PatioMesh({ config, onPartClick }: { config: PatioConfig; onPartClick?: (part: string) => void }) {
   const { width, depth, height, style, frameColor, material, colorbondType, attachedSides = ['back'], accessories, shape, walls } = config;
@@ -733,10 +862,14 @@ export default function PatioMesh({ config, onPartClick }: { config: PatioConfig
 
   return (
     <group>
-      {/* Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={MATERIALS.ground} receiveShadow>
-        <planeGeometry args={[width + 4, depth + 4]} />
-      </mesh>
+      {/* Foundation Base */}
+      <FoundationBase
+        foundationType={config.foundation?.type ?? 'landscape'}
+        width={width}
+        depth={depth}
+        postPositions={posts}
+        colSize={colSize}
+      />
 
       {/* Walls for attached sides — use wall config for sizing */}
       {!isFreestanding && hasBack && (
