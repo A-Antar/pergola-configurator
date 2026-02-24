@@ -108,7 +108,6 @@ export default function PatioScene({
   const controlsRef = useRef<any>(null);
   const [showDims, setShowDims] = useState<'off' | 'key' | 'all'>('off');
   const [autoRotate, setAutoRotate] = useState(false);
-  const [dimDragging, setDimDragging] = useState(false);
   const [sceneMode, setSceneMode] = useState<SceneMode>('studio');
   const [internalQuality, setInternalQuality] = useState<QualityLevel>('balanced');
   const quality = externalQuality ?? internalQuality;
@@ -245,7 +244,6 @@ export default function PatioScene({
             selectedWall={wallEditMode ? (selectedWall ?? null) : null}
             onSelectWall={onSelectWall ?? (() => {})}
             showDimensions={showDims}
-            onDragging={setDimDragging}
           />
         )}
 
@@ -272,7 +270,7 @@ export default function PatioScene({
           target={[0, config.height / 2, 0]}
           enableDamping
           dampingFactor={0.08}
-          enabled={!animating && !autoRotate && !dimDragging}
+          enabled={!animating && !autoRotate}
         />
 
         <CameraAnimator

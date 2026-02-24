@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo, useCallback } from "react";
-import { useThree, ThreeEvent, useFrame } from "@react-three/fiber";
-import { Text, Line } from "@react-three/drei";
+import { useThree } from "@react-three/fiber";
+import { Text, Line, Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { PatioConfig, WallSide, WallConfig } from "@/types/configurator";
 
@@ -15,26 +15,64 @@ interface WallEditorMeshProps {
 
 const mm = (v: number) => v / 1000;
 
-/* ── Draggable Dimension Arrow ────────────────── */
-function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offsetDir, color = '#333333', onDragStateChange }: {
+/* ── Slider Popover (HTML overlay in 3D) ──────── */
+function DimensionSlider({ value, min, max, step, unit, onClose, onChange }: {
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+  onClose: () => void;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div
+      className="bg-card border border-border rounded-lg shadow-xl p-3 min-w-[200px]"
+      style={{ pointerEvents: 'auto' }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-bold text-foreground">
+          {value.toFixed(step < 1 ? 1 : 0)} {unit}
+        </span>
+        <button
+          onClick={onClose}
+          className="text-muted-foreground hover:text-foreground text-xs ml-2 p-0.5"
+        >
+          ✕
+        </button>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="w-full accent-primary h-2 cursor-pointer"
+      />
+      <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+        <span>{min}{unit}</span>
+        <span>{max}{unit}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Dimension Arrow with clickable endpoints ──── */
+function DimensionArrow({ start, end, label, sideLabel, axis, offsetDir, color = '#333333', onEndpointClick, activeEnd }: {
   start: [number, number, number];
   end: [number, number, number];
   label: string;
   sideLabel: string;
   axis: 'x' | 'z' | 'y';
-  onDrag: (deltaMm: number) => void;
   offsetDir: [number, number, number];
   color?: string;
-  onDragStateChange?: (isDragging: boolean) => void;
+  onEndpointClick: (which: 'start' | 'end') => void;
+  activeEnd: 'start' | 'end' | null;
 }) {
-  const [hovered, setHovered] = useState(false);
-  const [dragging, setDragging] = useState(false);
-  const [activated, setActivated] = useState<'start' | 'end' | null>(null);
-  const dragStart = useRef<THREE.Vector3 | null>(null);
-  const { camera, raycaster, gl } = useThree();
-  const plane = useRef(new THREE.Plane());
-  const intersection = useRef(new THREE.Vector3());
-  const groupRef = useRef<THREE.Group>(null);
+  const [hovered, setHovered] = useState<'start' | 'end' | null>(null);
+  const { gl } = useThree();
 
   const midpoint: [number, number, number] = [
     (start[0] + end[0]) / 2 + offsetDir[0],
@@ -42,7 +80,6 @@ function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offset
     (start[2] + end[2]) / 2 + offsetDir[2],
   ];
 
-  // Side label position — at the end, further offset
   const sideLabelPos: [number, number, number] = [
     end[0] + offsetDir[0] * 2,
     end[1] + offsetDir[1] * 2 + 0.15,
@@ -51,161 +88,70 @@ function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offset
 
   const linePoints = useMemo((): [number, number, number][] => [start, end], [start, end]);
 
-  // Extension lines (perpendicular ticks at each end)
   const tickSize = 0.12;
-  const startTick1 = useMemo((): [number, number, number][] => {
+  const startTick = useMemo((): [number, number, number][] => {
     if (axis === 'x') return [[start[0], start[1] - tickSize, start[2]], [start[0], start[1] + tickSize, start[2]]];
     if (axis === 'z') return [[start[0], start[1] - tickSize, start[2]], [start[0], start[1] + tickSize, start[2]]];
     return [[start[0] - tickSize, start[1], start[2]], [start[0] + tickSize, start[1], start[2]]];
   }, [start, axis]);
 
-  const endTick1 = useMemo((): [number, number, number][] => {
+  const endTick = useMemo((): [number, number, number][] => {
     if (axis === 'x') return [[end[0], end[1] - tickSize, end[2]], [end[0], end[1] + tickSize, end[2]]];
     if (axis === 'z') return [[end[0], end[1] - tickSize, end[2]], [end[0], end[1] + tickSize, end[2]]];
     return [[end[0] - tickSize, end[1], end[2]], [end[0] + tickSize, end[1], end[2]]];
   }, [end, axis]);
 
-  const startDragFromPoint = useCallback((pt: THREE.Vector3) => {
-    setDragging(true);
-    onDragStateChange?.(true);
-    dragStart.current = pt.clone();
-    const normal = new THREE.Vector3(0, 1, 0);
-    if (axis === 'y') normal.set(0, 0, 1);
-    plane.current.setFromNormalAndCoplanarPoint(normal, pt);
-    (gl.domElement as HTMLElement).style.cursor = 'grabbing';
-  }, [axis, gl, onDragStateChange]);
+  const activeColor = activeEnd ? '#f59e0b' : hovered ? '#16a34a' : color;
+  const lineOpacity = activeEnd ? 0.95 : hovered ? 0.9 : 0.6;
 
-  const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>, which: 'start' | 'end') => {
-    if (activated !== which) return; // must be double-click activated first
-    e.stopPropagation();
-    const pt = new THREE.Vector3(...(which === 'end' ? end : start));
-    startDragFromPoint(pt);
-  }, [activated, end, start, startDragFromPoint]);
+  const handleEndpointColor = (which: 'start' | 'end') => {
+    if (activeEnd === which) return '#f59e0b';
+    if (hovered === which) return '#22c55e';
+    return '#555555';
+  };
 
-  const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
-    if (!dragging || !dragStart.current) return;
-    e.stopPropagation();
-
-    const rect = gl.domElement.getBoundingClientRect();
-    const mouse = new THREE.Vector2(
-      ((e.clientX - rect.left) / rect.width) * 2 - 1,
-      -((e.clientY - rect.top) / rect.height) * 2 + 1,
-    );
-    raycaster.setFromCamera(mouse, camera);
-
-    if (raycaster.ray.intersectPlane(plane.current, intersection.current)) {
-      let delta: number;
-      if (axis === 'x') delta = intersection.current.x - dragStart.current.x;
-      else if (axis === 'z') delta = intersection.current.z - dragStart.current.z;
-      else delta = intersection.current.y - dragStart.current.y;
-
-      const deltaMm = delta * 1000;
-      const snapMm = e.shiftKey ? 10 : 100;
-      const snapped = Math.round(deltaMm / snapMm) * snapMm;
-
-      if (Math.abs(snapped) >= snapMm * 0.5) {
-        onDrag(snapped);
-        if (axis === 'x') dragStart.current.x = intersection.current.x;
-        else if (axis === 'z') dragStart.current.z = intersection.current.z;
-        else dragStart.current.y = intersection.current.y;
-      }
-    }
-  }, [dragging, axis, camera, raycaster, gl, onDrag]);
-
-  const handlePointerUp = useCallback(() => {
-    setDragging(false);
-    onDragStateChange?.(false);
-    dragStart.current = null;
-    (gl.domElement as HTMLElement).style.cursor = activated ? 'grab' : '';
-  }, [gl, activated, onDragStateChange]);
-
-  const handleDoubleClick = useCallback((which: 'start' | 'end') => {
-    setActivated(prev => prev === which ? null : which);
-  }, []);
-
-  // Deactivate on click away (pointerMissed)
-  const handlePointerMissed = useCallback(() => {
-    setActivated(null);
-  }, []);
-
-  const activeColor = dragging ? '#22c55e' : activated ? '#f59e0b' : hovered ? '#16a34a' : color;
-  const lineOpacity = dragging ? 1.0 : activated ? 0.95 : hovered ? 0.9 : 0.6;
+  const handleEndpointEmissive = (which: 'start' | 'end') => {
+    if (activeEnd === which) return 0.6;
+    if (hovered === which) return 0.4;
+    return 0.1;
+  };
 
   return (
-    <group ref={groupRef}>
-      {/* Main dimension line — dashed style */}
+    <group>
       <Line points={linePoints} color={activeColor} lineWidth={1.5} transparent opacity={lineOpacity} dashed dashSize={0.08} dashOffset={0} gapSize={0.05} />
+      <Line points={startTick} color={activeColor} lineWidth={1.5} transparent opacity={lineOpacity} />
+      <Line points={endTick} color={activeColor} lineWidth={1.5} transparent opacity={lineOpacity} />
 
-      {/* Tick marks at ends */}
-      <Line points={startTick1} color={activeColor} lineWidth={1.5} transparent opacity={lineOpacity} />
-      <Line points={endTick1} color={activeColor} lineWidth={1.5} transparent opacity={lineOpacity} />
-
-      {/* Measurement label */}
-      <Text
-        position={midpoint}
-        fontSize={0.14}
-        color={activeColor}
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.006}
-        outlineColor="#ffffff"
-        renderOrder={999}
-        fontWeight="bold"
-      >
+      <Text position={midpoint} fontSize={0.14} color={activeColor} anchorX="center" anchorY="middle" outlineWidth={0.006} outlineColor="#ffffff" renderOrder={999} fontWeight="bold">
         {label}
       </Text>
 
-      {/* Side label (A, B, C, D) — larger */}
-      <Text
-        position={sideLabelPos}
-        fontSize={0.22}
-        color={activeColor}
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.008}
-        outlineColor="#ffffff"
-        renderOrder={999}
-        fontWeight="bold"
-      >
-        {sideLabel}
-      </Text>
+      {sideLabel && (
+        <Text position={sideLabelPos} fontSize={0.22} color={activeColor} anchorX="center" anchorY="middle" outlineWidth={0.008} outlineColor="#ffffff" renderOrder={999} fontWeight="bold">
+          {sideLabel}
+        </Text>
+      )}
 
-      {/* Drag handle at end — arrow tip */}
+      {/* End handle */}
       <mesh
         position={end}
-        onPointerEnter={() => { setHovered(true); (gl.domElement as HTMLElement).style.cursor = activated === 'end' ? 'grab' : 'pointer'; }}
-        onPointerLeave={() => { setHovered(false); if (!dragging) (gl.domElement as HTMLElement).style.cursor = ''; }}
-        onDoubleClick={(e) => { e.stopPropagation(); handleDoubleClick('end'); }}
-        onPointerDown={(e) => handlePointerDown(e, 'end')}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+        onPointerEnter={() => { setHovered('end'); (gl.domElement as HTMLElement).style.cursor = 'pointer'; }}
+        onPointerLeave={() => { setHovered(null); (gl.domElement as HTMLElement).style.cursor = ''; }}
+        onClick={(e) => { e.stopPropagation(); onEndpointClick('end'); }}
       >
         <coneGeometry args={[0.06, 0.15, 8]} />
-        <meshPhysicalMaterial
-          color={activated === 'end' ? '#f59e0b' : dragging ? '#f59e0b' : hovered ? '#22c55e' : '#555555'}
-          emissive={activated === 'end' ? '#f59e0b' : dragging ? '#f59e0b' : hovered ? '#22c55e' : '#555555'}
-          emissiveIntensity={activated === 'end' ? 0.6 : dragging ? 0.6 : hovered ? 0.4 : 0.1}
-          roughness={0.4}
-        />
+        <meshPhysicalMaterial color={handleEndpointColor('end')} emissive={handleEndpointColor('end')} emissiveIntensity={handleEndpointEmissive('end')} roughness={0.4} />
       </mesh>
 
-      {/* Drag handle at start — arrow tip */}
+      {/* Start handle */}
       <mesh
         position={start}
-        onPointerEnter={() => { setHovered(true); (gl.domElement as HTMLElement).style.cursor = activated === 'start' ? 'grab' : 'pointer'; }}
-        onPointerLeave={() => { setHovered(false); if (!dragging) (gl.domElement as HTMLElement).style.cursor = ''; }}
-        onDoubleClick={(e) => { e.stopPropagation(); handleDoubleClick('start'); }}
-        onPointerDown={(e) => handlePointerDown(e, 'start')}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+        onPointerEnter={() => { setHovered('start'); (gl.domElement as HTMLElement).style.cursor = 'pointer'; }}
+        onPointerLeave={() => { setHovered(null); (gl.domElement as HTMLElement).style.cursor = ''; }}
+        onClick={(e) => { e.stopPropagation(); onEndpointClick('start'); }}
       >
         <coneGeometry args={[0.06, 0.15, 8]} />
-        <meshPhysicalMaterial
-          color={activated === 'start' ? '#f59e0b' : dragging ? '#f59e0b' : hovered ? '#22c55e' : '#555555'}
-          emissive={activated === 'start' ? '#f59e0b' : dragging ? '#f59e0b' : hovered ? '#22c55e' : '#555555'}
-          emissiveIntensity={activated === 'start' ? 0.6 : dragging ? 0.6 : hovered ? 0.4 : 0.1}
-          roughness={0.4}
-        />
+        <meshPhysicalMaterial color={handleEndpointColor('start')} emissive={handleEndpointColor('start')} emissiveIntensity={handleEndpointEmissive('start')} roughness={0.4} />
       </mesh>
     </group>
   );
@@ -246,6 +192,7 @@ export default function WallEditorMesh({
   config, onChange, selectedWall, onSelectWall, showDimensions, onDragging,
 }: WallEditorMeshProps) {
   const [hoveredWall, setHoveredWall] = useState<WallSide | null>(null);
+  const [activeSlider, setActiveSlider] = useState<{ dim: 'width' | 'depth' | 'height'; which: 'start' | 'end' } | null>(null);
   const { width, depth, height, walls } = config;
 
   const wallFaces = useMemo(() => {
@@ -268,89 +215,125 @@ export default function WallEditorMesh({
     onChange({ ...config, walls: newWalls, attachedSides: attachedSides.length > 0 ? attachedSides : ['back'] });
   }, [config, onChange]);
 
-  const handleWidthDrag = useCallback((deltaMm: number) => {
-    const newWidth = Math.max(2, Math.min(12, width + deltaMm / 1000));
-    const snapped = Math.round(newWidth * 2) / 2; // snap to 0.5m
-    onChange({ ...config, width: snapped });
-  }, [config, onChange, width]);
+  const handleEndpointClick = useCallback((dim: 'width' | 'depth' | 'height', which: 'start' | 'end') => {
+    setActiveSlider(prev =>
+      prev?.dim === dim && prev?.which === which ? null : { dim, which }
+    );
+  }, []);
 
-  const handleDepthDrag = useCallback((deltaMm: number) => {
-    const newDepth = Math.max(2, Math.min(8, depth + deltaMm / 1000));
-    const snapped = Math.round(newDepth * 2) / 2;
-    onChange({ ...config, depth: snapped });
-  }, [config, onChange, depth]);
-
-  const handleHeightDrag = useCallback((deltaMm: number) => {
-    const newHeight = Math.max(2.4, Math.min(4.5, height + deltaMm / 1000));
-    const snapped = Math.round(newHeight * 10) / 10; // snap to 0.1m
-    onChange({ ...config, height: snapped });
-  }, [config, onChange, height]);
+  const handleSliderChange = useCallback((dim: 'width' | 'depth' | 'height', value: number) => {
+    if (dim === 'width') {
+      onChange({ ...config, width: value });
+    } else if (dim === 'depth') {
+      onChange({ ...config, depth: value });
+    } else {
+      onChange({ ...config, height: value });
+    }
+  }, [config, onChange]);
 
   const dimOffset = 0.6;
 
+  // Slider position — place at the active endpoint
+  const sliderPosition = useMemo((): [number, number, number] | null => {
+    if (!activeSlider) return null;
+    const { dim, which } = activeSlider;
+    if (dim === 'width') {
+      const x = which === 'end' ? width / 2 : -width / 2;
+      return [x, 0.4, depth / 2 + dimOffset];
+    }
+    if (dim === 'depth') {
+      const z = which === 'start' ? depth / 2 : -depth / 2;
+      return [width / 2 + dimOffset, 0.4, z];
+    }
+    // height
+    const y = which === 'end' ? height : 0;
+    return [width / 2 + dimOffset, y, -depth / 2 - dimOffset];
+  }, [activeSlider, width, depth, height, dimOffset]);
+
+  const sliderConfig = useMemo(() => {
+    if (!activeSlider) return null;
+    const { dim } = activeSlider;
+    if (dim === 'width') return { value: width, min: 2, max: 12, step: 0.1, unit: 'm' };
+    if (dim === 'depth') return { value: depth, min: 2, max: 8, step: 0.1, unit: 'm' };
+    return { value: height, min: 2.4, max: 4.5, step: 0.1, unit: 'm' };
+  }, [activeSlider, width, depth, height]);
+
   return (
     <group>
-      {/* ── Always-visible draggable dimensions ── */}
-
       {/* A — Front edge (width) */}
-      <DraggableDimension
+      <DimensionArrow
         start={[-width / 2, 0.05, depth / 2 + dimOffset]}
         end={[width / 2, 0.05, depth / 2 + dimOffset]}
-        label={`${Math.round(width * 100)}`}
+        label={`${(width * 1000).toFixed(0)}mm`}
         sideLabel="A"
         axis="x"
-        onDrag={handleWidthDrag}
         offsetDir={[0, 0.2, 0]}
-        onDragStateChange={onDragging}
+        onEndpointClick={(which) => handleEndpointClick('width', which)}
+        activeEnd={activeSlider?.dim === 'width' ? activeSlider.which : null}
       />
 
       {/* B — Right edge (depth) */}
-      <DraggableDimension
+      <DimensionArrow
         start={[width / 2 + dimOffset, 0.05, depth / 2]}
         end={[width / 2 + dimOffset, 0.05, -depth / 2]}
-        label={`${Math.round(depth * 100)}`}
+        label={`${(depth * 1000).toFixed(0)}mm`}
         sideLabel="B"
         axis="z"
-        onDrag={(d) => handleDepthDrag(-d)}
         offsetDir={[0.2, 0.2, 0]}
-        onDragStateChange={onDragging}
+        onEndpointClick={(which) => handleEndpointClick('depth', which)}
+        activeEnd={activeSlider?.dim === 'depth' ? activeSlider.which : null}
       />
 
       {/* C — Back edge (width) */}
-      <DraggableDimension
+      <DimensionArrow
         start={[width / 2, 0.05, -depth / 2 - dimOffset]}
         end={[-width / 2, 0.05, -depth / 2 - dimOffset]}
-        label={`${Math.round(width * 100)}`}
+        label={`${(width * 1000).toFixed(0)}mm`}
         sideLabel="C"
         axis="x"
-        onDrag={(d) => handleWidthDrag(-d)}
         offsetDir={[0, 0.2, 0]}
-        onDragStateChange={onDragging}
+        onEndpointClick={(which) => handleEndpointClick('width', which === 'start' ? 'end' : 'start')}
+        activeEnd={activeSlider?.dim === 'width' ? (activeSlider.which === 'start' ? 'end' : 'start') : null}
       />
 
       {/* D — Left edge (depth) */}
-      <DraggableDimension
+      <DimensionArrow
         start={[-width / 2 - dimOffset, 0.05, -depth / 2]}
         end={[-width / 2 - dimOffset, 0.05, depth / 2]}
-        label={`${Math.round(depth * 100)}`}
+        label={`${(depth * 1000).toFixed(0)}mm`}
         sideLabel="D"
         axis="z"
-        onDrag={handleDepthDrag}
         offsetDir={[-0.2, 0.2, 0]}
-        onDragStateChange={onDragging}
+        onEndpointClick={(which) => handleEndpointClick('depth', which === 'start' ? 'end' : 'start')}
+        activeEnd={activeSlider?.dim === 'depth' ? (activeSlider.which === 'start' ? 'end' : 'start') : null}
       />
 
       {/* Height — right-back corner */}
-      <DraggableDimension
+      <DimensionArrow
         start={[width / 2 + dimOffset, 0, -depth / 2 - dimOffset]}
         end={[width / 2 + dimOffset, height, -depth / 2 - dimOffset]}
-        label={`${Math.round(height * 100)}`}
+        label={`${(height * 1000).toFixed(0)}mm`}
         sideLabel=""
         axis="y"
-        onDrag={handleHeightDrag}
         offsetDir={[0.2, 0, 0]}
-        onDragStateChange={onDragging}
+        onEndpointClick={(which) => handleEndpointClick('height', which)}
+        activeEnd={activeSlider?.dim === 'height' ? activeSlider.which : null}
       />
+
+      {/* ── Slider popover (HTML overlay at 3D position) ── */}
+      {activeSlider && sliderPosition && sliderConfig && (
+        <Html position={sliderPosition} center distanceFactor={8} style={{ pointerEvents: 'auto' }}>
+          <DimensionSlider
+            value={sliderConfig.value}
+            min={sliderConfig.min}
+            max={sliderConfig.max}
+            step={sliderConfig.step}
+            unit={sliderConfig.unit}
+            onChange={(v) => handleSliderChange(activeSlider.dim, v)}
+            onClose={() => setActiveSlider(null)}
+          />
+        </Html>
+      )}
 
       {/* ── Wall selection overlays (only in wall edit mode) ── */}
       {wallFaces.map(face => {
