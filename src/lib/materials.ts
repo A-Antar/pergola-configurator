@@ -211,10 +211,10 @@ export interface QualitySettings {
 export const QUALITY_PRESETS: Record<QualityLevel, QualitySettings> = {
   high: {
     shadows: true,
-    shadowMapSize: 2048,
-    envMapIntensity: 1.0,
-    contactShadowBlur: 3,
-    contactShadowOpacity: 0.6,
+    shadowMapSize: 4096,
+    envMapIntensity: 1.2,
+    contactShadowBlur: 3.5,
+    contactShadowOpacity: 0.65,
     maxLights: 8,
   },
   balanced: {
