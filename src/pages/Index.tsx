@@ -30,7 +30,7 @@ const PRODUCTS = [
     id: 'decking',
     title: 'Decking',
     description: 'Merbau & Composite (EkoDeck) timber decking',
-    available: false,
+    available: true,
   },
   {
     id: 'ezi-slat',
