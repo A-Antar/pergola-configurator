@@ -12,6 +12,7 @@ import AppLayout from "./components/app/AppLayout";
 import ProjectsPage from "./pages/app/ProjectsPage";
 import ProjectDetailPage from "./pages/app/ProjectDetailPage";
 import AdminPage from "./pages/app/AdminPage";
+import CatalogPage from "./pages/app/CatalogPage";
 import AnalyticsPage from "./pages/app/AnalyticsPage";
 import SharePage from "./pages/SharePage";
 import DeckingConfigurator from "./pages/DeckingConfigurator";
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:id" element={<ProjectDetailPage />} />
             <Route path="admin" element={<AdminPage />} />
+            <Route path="catalog" element={<CatalogPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
           </Route>
           <Route path="/dev/qa" element={<QATestPanel />} />

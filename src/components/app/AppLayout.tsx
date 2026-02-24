@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { FolderKanban, Settings, BarChart3, LogOut } from "lucide-react";
+import { FolderKanban, Settings, BarChart3, LogOut, Package } from "lucide-react";
 
 export default function AppLayout() {
   const navigate = useNavigate();
@@ -27,6 +27,7 @@ export default function AppLayout() {
 
   const links = [
     { to: "/app/projects", icon: FolderKanban, label: "Projects" },
+    { to: "/app/catalog", icon: Package, label: "Catalog" },
     { to: "/app/analytics", icon: BarChart3, label: "Analytics" },
     { to: "/app/admin", icon: Settings, label: "Admin" },
   ];
