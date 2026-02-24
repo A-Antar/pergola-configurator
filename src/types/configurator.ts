@@ -92,6 +92,7 @@ export const DEFAULT_PATIO_CONFIG: PatioConfig = {
     chemsetCost: 120,
     labourRate: 110,
     concreteCostPerM3: 250,
+    coreDrillCostEach: 150,
   },
   accessories: {
     lighting: false,

@@ -48,34 +48,26 @@ export function calculateDeckEstimate(config: DeckingConfig) {
 
   // ─── Foundation costs ──────────────────────────────
   const f = config.foundation;
-  const columnCount = postCount; // columns = posts
+  const columnCount = postCount;
   if (f.type === 'landscape') {
     if (columnCount <= 2) {
-      // Hand excavation: labourer rate × 6 hours
-      const handCost = f.labourRate * 6;
-      breakdown.push({ label: `Hand excavation (${columnCount} holes, 6hrs)`, amount: Math.round(handCost) });
+      breakdown.push({ label: `Hand Excavation - Labourer (${columnCount} holes, 6hrs @ $${f.labourRate}/hr)`, amount: Math.round(f.labourRate * 6) });
     } else {
-      // 1.5T Excavator 8hrs + 2-way float
-      const excCost = f.excavatorRate * 8 + f.floatCharge;
-      breakdown.push({ label: `Excavator 8hrs + float`, amount: Math.round(excCost) });
+      breakdown.push({ label: `1.5T Excavator (8hrs @ $${f.excavatorRate}/hr)`, amount: Math.round(f.excavatorRate * 8) });
+      breakdown.push({ label: '2-Way Float Delivery', amount: Math.round(f.floatCharge) });
     }
   } else if (f.type === 'concrete-thick') {
-    const bracketsCost = columnCount * f.bracketCostEach;
-    const labourFoundation = f.labourRate * 6; // 6hr minimum
-    breakdown.push({ label: `Brackets (×${columnCount})`, amount: Math.round(bracketsCost) });
-    breakdown.push({ label: 'Chemset + bolts', amount: Math.round(f.chemsetCost) });
-    breakdown.push({ label: 'Foundation labour (6hr min)', amount: Math.round(labourFoundation) });
+    breakdown.push({ label: `Column Mounting Brackets (×${columnCount} @ $${f.bracketCostEach} ea)`, amount: Math.round(columnCount * f.bracketCostEach) });
+    breakdown.push({ label: 'Chemset + Bolts', amount: Math.round(f.chemsetCost) });
+    breakdown.push({ label: `Installation Labour (6hr min @ $${f.labourRate}/hr)`, amount: Math.round(f.labourRate * 6) });
   } else if (f.type === 'concrete-thin') {
-    // Core drill + concrete fill per hole: π × 0.3² × 0.6 = ~0.1696 m³ per hole
+    breakdown.push({ label: `Core Drilling 600mm⌀ × 600mm deep (×${columnCount} @ $${f.coreDrillCostEach} ea)`, amount: Math.round(columnCount * f.coreDrillCostEach) });
     const volumePerHole = Math.PI * 0.3 * 0.3 * 0.6;
     const totalVolume = volumePerHole * columnCount;
-    const concreteCost = totalVolume * f.concreteCostPerM3;
-    const labourFoundation = f.labourRate * 6;
-    breakdown.push({ label: `Core drill + concrete (${columnCount} holes, ${totalVolume.toFixed(2)}m³)`, amount: Math.round(concreteCost) });
-    breakdown.push({ label: 'Foundation labour (6hr min)', amount: Math.round(labourFoundation) });
-    // Column extension cost: extra 0.6m per post at post material rate
+    breakdown.push({ label: `Concrete Fill (${totalVolume.toFixed(2)} m³ @ $${f.concreteCostPerM3}/m³)`, amount: Math.round(totalVolume * f.concreteCostPerM3) });
     const extensionCost = columnCount * 0.6 * p.bearerRatePerLm;
-    breakdown.push({ label: `Column extension (+600mm ×${columnCount})`, amount: Math.round(extensionCost) });
+    breakdown.push({ label: `Extended Column Length (+600mm × ${columnCount} cols)`, amount: Math.round(extensionCost) });
+    breakdown.push({ label: `Installation Labour (6hr min @ $${f.labourRate}/hr)`, amount: Math.round(f.labourRate * 6) });
   }
 
   // Railings per linear metre of perimeter where enabled
