@@ -11,6 +11,7 @@ interface WallEditorMeshProps {
   onSelectWall: (side: WallSide | null) => void;
   showDimensions: 'off' | 'key' | 'all';
   onDragging?: (isDragging: boolean) => void;
+  onSliderOpen?: (open: boolean) => void;
 }
 
 const mm = (v: number) => v / 1000;
@@ -189,7 +190,7 @@ function WallOutline({ position, rotation, size, isSelected, isHovered }: {
 
 /* ── Main WallEditorMesh ──────────────────────── */
 export default function WallEditorMesh({
-  config, onChange, selectedWall, onSelectWall, showDimensions, onDragging,
+  config, onChange, selectedWall, onSelectWall, showDimensions, onDragging, onSliderOpen,
 }: WallEditorMeshProps) {
   const [hoveredWall, setHoveredWall] = useState<WallSide | null>(null);
   const [activeSlider, setActiveSlider] = useState<{ dim: 'width' | 'depth' | 'height'; which: 'start' | 'end' } | null>(null);
@@ -216,10 +217,12 @@ export default function WallEditorMesh({
   }, [config, onChange]);
 
   const handleEndpointClick = useCallback((dim: 'width' | 'depth' | 'height', which: 'start' | 'end') => {
-    setActiveSlider(prev =>
-      prev?.dim === dim && prev?.which === which ? null : { dim, which }
-    );
-  }, []);
+    setActiveSlider(prev => {
+      const closing = prev?.dim === dim && prev?.which === which;
+      onSliderOpen?.(!closing);
+      return closing ? null : { dim, which };
+    });
+  }, [onSliderOpen]);
 
   const handleSliderChange = useCallback((dim: 'width' | 'depth' | 'height', value: number) => {
     if (dim === 'width') {
@@ -330,7 +333,7 @@ export default function WallEditorMesh({
             step={sliderConfig.step}
             unit={sliderConfig.unit}
             onChange={(v) => handleSliderChange(activeSlider.dim, v)}
-            onClose={() => setActiveSlider(null)}
+            onClose={() => { setActiveSlider(null); onSliderOpen?.(false); }}
           />
         </Html>
       )}
