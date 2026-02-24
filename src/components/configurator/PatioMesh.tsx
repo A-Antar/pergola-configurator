@@ -677,12 +677,11 @@ function DecorativeColumns({ positions, height, frameMat }: {
 /* ── Foundation Base Visual ──────────────────────────────────── */
 
 const FOUNDATION_MATERIALS = {
-  soil: new THREE.MeshStandardMaterial({ color: new THREE.Color('#5a4a3a'), roughness: 0.95, metalness: 0 }),
-  soilDark: new THREE.MeshStandardMaterial({ color: new THREE.Color('#3d3028'), roughness: 0.9, metalness: 0 }),
   grass: new THREE.MeshStandardMaterial({ color: new THREE.Color('#4a6b35'), roughness: 0.85, metalness: 0 }),
   concrete: new THREE.MeshStandardMaterial({ color: new THREE.Color('#b0aca6'), roughness: 0.75, metalness: 0.05 }),
   concreteCracked: new THREE.MeshStandardMaterial({ color: new THREE.Color('#a09a92'), roughness: 0.8, metalness: 0.03 }),
-  crackLine: new THREE.MeshStandardMaterial({ color: new THREE.Color('#6b6560'), roughness: 0.9, metalness: 0 }),
+  concreteDark: new THREE.MeshStandardMaterial({ color: new THREE.Color('#8a8580'), roughness: 0.85, metalness: 0.03 }),
+  crackLine: new THREE.MeshStandardMaterial({ color: new THREE.Color('#6b6560'), roughness: 0.9, metalness: 0, depthWrite: false }),
   holeEdge: new THREE.MeshStandardMaterial({ color: new THREE.Color('#7a7570'), roughness: 0.7, metalness: 0.05 }),
 };
 
@@ -711,11 +710,9 @@ function FoundationBase({ foundationType, width, depth, postPositions, colSize }
         {/* Excavation holes (600mm diameter × 600mm deep) at each post */}
         {postPositions.map(([x, z], i) => (
           <group key={`hole-${i}`} position={[x, 0, z]}>
-            {/* Cylindrical hole depression */}
-            <mesh position={[0, -0.3, 0]} material={FOUNDATION_MATERIALS.soilDark}>
+            <mesh position={[0, -0.3, 0]} material={FOUNDATION_MATERIALS.concreteDark}>
               <cylinderGeometry args={[0.3, 0.3, 0.6, 16]} />
             </mesh>
-            {/* Hole rim on surface */}
             <mesh position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.holeEdge}>
               <ringGeometry args={[0.28, 0.34, 16]} />
             </mesh>
@@ -737,10 +734,6 @@ function FoundationBase({ foundationType, width, depth, postPositions, colSize }
         {/* Concrete slab */}
         <mesh position={[0, -slabThick / 2, 0]} material={FOUNDATION_MATERIALS.concrete} receiveShadow castShadow>
           <boxGeometry args={[width + 1.0, slabThick, depth + 1.0]} />
-        </mesh>
-        {/* Slab edge highlight */}
-        <mesh position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.concrete} receiveShadow>
-          <planeGeometry args={[width + 1.0, depth + 1.0]} />
         </mesh>
         {/* Bracket mounting points at each post */}
         {postPositions.map(([x, z], i) => (
@@ -773,26 +766,23 @@ function FoundationBase({ foundationType, width, depth, postPositions, colSize }
       <mesh position={[0, -slabThick / 2, 0]} material={FOUNDATION_MATERIALS.concreteCracked} receiveShadow castShadow>
         <boxGeometry args={[width + 1.0, slabThick, depth + 1.0]} />
       </mesh>
-      {/* Crack lines across the slab */}
-      {Array.from({ length: 5 }).map((_, i) => {
-        const angle = (i * 37 + 15) * (Math.PI / 180);
-        const cx = (i - 2) * 0.8;
-        const cz = (i % 2 === 0 ? 0.3 : -0.4) * (i - 2);
-        return (
-          <mesh key={`crack-${i}`} position={[cx, 0.002, cz]} rotation={[-Math.PI / 2, angle, 0]} material={FOUNDATION_MATERIALS.crackLine}>
-            <planeGeometry args={[0.008, 1.5 + i * 0.3]} />
-          </mesh>
-        );
-      })}
+      {/* Simple crack lines embedded in slab top — offset Y above slab to avoid z-fight */}
+      {[
+        { x: -0.6, z: 0, angle: 20, len: 2.0 },
+        { x: 0.4, z: -0.5, angle: 55, len: 1.8 },
+        { x: -0.2, z: 0.6, angle: -30, len: 1.5 },
+      ].map((c, i) => (
+        <mesh key={`crack-${i}`} position={[c.x, 0.006, c.z]} rotation={[-Math.PI / 2, c.angle * Math.PI / 180, 0]} material={FOUNDATION_MATERIALS.crackLine} renderOrder={1}>
+          <planeGeometry args={[0.012, c.len]} />
+        </mesh>
+      ))}
       {/* Core-drilled holes at each post (600mm diameter) */}
       {postPositions.map(([x, z], i) => (
         <group key={`core-${i}`} position={[x, 0, z]}>
-          {/* Drilled hole — cylindrical cutout visual */}
-          <mesh position={[0, -0.3, 0]} material={FOUNDATION_MATERIALS.soilDark}>
+          <mesh position={[0, -0.3, 0]} material={FOUNDATION_MATERIALS.concreteDark}>
             <cylinderGeometry args={[0.3, 0.3, 0.6, 16]} />
           </mesh>
-          {/* Hole rim on slab surface */}
-          <mesh position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.holeEdge}>
+          <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.holeEdge} renderOrder={1}>
             <ringGeometry args={[0.28, 0.34, 16]} />
           </mesh>
         </group>
