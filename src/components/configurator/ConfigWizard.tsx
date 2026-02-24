@@ -53,27 +53,9 @@ export default function ConfigWizard({ config, onChange, onGetQuote, activeStep,
 
   return (
     <div className="flex flex-col h-full">
-      {/* Step indicators */}
-      <div className="flex items-center gap-1 px-5 pt-5 pb-3">
-        {STEPS.map((s, i) => (
-          <button
-            key={s}
-            onClick={() => setStep(i)}
-            className={`flex-1 text-center py-1.5 text-[10px] font-medium rounded transition-colors ${
-              i === step
-                ? 'bg-primary text-primary-foreground'
-                : i < step
-                ? 'bg-primary/20 text-primary'
-                : 'bg-secondary text-muted-foreground'
-            }`}
-          >
-            {i < step ? <span className="flex items-center justify-center gap-1"><Check className="w-3 h-3" />{s}</span> : s}
-          </button>
-        ))}
-      </div>
-
       {/* Step content */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        <h3 className="font-display text-xs font-semibold text-muted-foreground uppercase tracking-widest">{STEPS[step]}</h3>
         {step === 0 && (
           <div className="space-y-4">
             <h3 className="font-display text-lg font-semibold text-foreground">Roof Material</h3>
@@ -416,23 +398,26 @@ export default function ConfigWizard({ config, onChange, onGetQuote, activeStep,
         )}
       </div>
 
-      {/* Navigation */}
-      <div className="px-5 py-4 border-t border-border flex gap-2">
-        {canPrev && (
-          <Button variant="outline" onClick={() => setStep(step - 1)} className="flex-1">
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            Back
-          </Button>
+      {/* Navigation — PREV / NEXT */}
+      <div className="px-5 py-3 border-t border-border flex items-center justify-between">
+        {canPrev ? (
+          <button onClick={() => setStep(step - 1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+            PREV
+          </button>
+        ) : (
+          <span />
         )}
         {canNext ? (
-          <Button onClick={() => setStep(step + 1)} className="flex-1">
-            Next
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
+          <button onClick={() => setStep(step + 1)} className="flex items-center gap-1 text-sm text-primary font-semibold hover:text-primary/80 transition-colors">
+            NEXT
+            <ChevronRight className="w-4 h-4" />
+          </button>
         ) : (
-          <Button onClick={onGetQuote} className="flex-1">
-            Get Free Quote
-          </Button>
+          <button onClick={onGetQuote} className="flex items-center gap-1 text-sm text-primary font-semibold hover:text-primary/80 transition-colors">
+            GET QUOTE
+            <ChevronRight className="w-4 h-4" />
+          </button>
         )}
       </div>
     </div>
