@@ -280,6 +280,10 @@ export default function ConfigWizard({ config, onChange, onGetQuote, activeStep,
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Core drill $ each</label>
+                    <Input type="number" value={config.foundation.coreDrillCostEach} onChange={(e) => updateFoundation({ coreDrillCostEach: Number(e.target.value) || 0 })} className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">Concrete $/m³</label>
                     <Input type="number" value={config.foundation.concreteCostPerM3} onChange={(e) => updateFoundation({ concreteCostPerM3: Number(e.target.value) || 0 })} className="h-8 text-sm" />
                   </div>

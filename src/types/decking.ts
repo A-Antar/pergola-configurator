@@ -19,6 +19,8 @@ export interface FoundationConfig {
   labourRate: number;
   /** Concrete cost per m³ (concrete-thin only) */
   concreteCostPerM3: number;
+  /** Core drill cost per hole (concrete-thin only) */
+  coreDrillCostEach: number;
 }
 
 export interface DeckingConfig {
@@ -87,6 +89,7 @@ export const DEFAULT_FOUNDATION_CONFIG: FoundationConfig = {
   chemsetCost: 120,
   labourRate: 110,
   concreteCostPerM3: 250,
+  coreDrillCostEach: 150,
 };
 
 export const DEFAULT_DECKING_CONFIG: DeckingConfig = {
