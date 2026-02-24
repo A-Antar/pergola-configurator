@@ -187,7 +187,7 @@ export default function PatioScene({
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         style={{ background: sceneMode === 'studio'
-          ? 'linear-gradient(180deg, #4a90d9 0%, #7ec8e3 25%, #a8dce0 40%, #8cc63f 55%, #5da832 70%, #4a9a2b 100%)'
+          ? 'linear-gradient(180deg, #d4e6f1 0%, #e8f0f5 25%, #f0f4f0 40%, #c5ddb8 55%, #a8cc8f 70%, #8fbe72 100%)'
           : 'transparent'
         }}
       >
@@ -283,100 +283,56 @@ export default function PatioScene({
         <AutoRotate enabled={autoRotate} />
       </Canvas>
 
-      {/* ── Camera presets ─────────────────────────────────── */}
+      {/* ── Camera presets — top left ── */}
       <div className="absolute top-3 left-3 flex gap-1">
         {(['iso', 'front', 'left', 'right', 'under', 'top'] as CameraPreset[]).map((p) => (
           <button
             key={p}
             onClick={() => setCameraPreset(p)}
-            className="px-2 py-1 rounded-md bg-background/70 backdrop-blur-md border border-border/50 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-background/90 transition-all duration-200 capitalize"
+            className="px-2 py-1 rounded-md bg-card/80 backdrop-blur border border-border text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-card transition-all capitalize"
           >
             {p}
           </button>
         ))}
       </div>
 
-      {/* ── Bottom toolbar ─────────────────────────────────── */}
-      <div className="absolute bottom-3 right-3 flex gap-1.5">
+      {/* ── Bottom toolbar — centered icons ── */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 bg-card/90 backdrop-blur border border-border rounded-lg p-1 shadow-sm">
+        <button onClick={handleReset} title="Reset camera" className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-all">
+          <RotateCcw className="w-4 h-4" />
+        </button>
+        <button onClick={() => setAutoRotate(!autoRotate)} title="Auto-rotate" className={`p-2 rounded-md transition-all ${autoRotate ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}>
+          <RotateCw className="w-4 h-4" />
+        </button>
+        <button onClick={() => setShowDims(prev => prev === 'off' ? 'key' : prev === 'key' ? 'all' : 'off')} title={`Dimensions: ${showDims}`} className={`p-2 rounded-md transition-all ${showDims !== 'off' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}>
+          <Eye className="w-4 h-4" />
+        </button>
+        <button onClick={handleScreenshot} title="Screenshot" className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-all">
+          <Camera className="w-4 h-4" />
+        </button>
+        <div className="w-px bg-border mx-0.5" />
+        <button onClick={() => setSceneMode('studio')} title="Studio" className={`p-2 rounded-md transition-all ${sceneMode === 'studio' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}>
+          <Warehouse className="w-4 h-4" />
+        </button>
+        <button onClick={() => setSceneMode('environment')} title="Environment" className={`p-2 rounded-md transition-all ${sceneMode === 'environment' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}>
+          <Sun className="w-4 h-4" />
+        </button>
+        <div className="w-px bg-border mx-0.5" />
         {/* Quality */}
-        <div className="flex gap-0.5 bg-background/70 backdrop-blur-md border border-border/50 rounded-lg p-0.5">
-          {(['high', 'balanced', 'low'] as QualityLevel[]).map((q) => (
-            <button
-              key={q}
-              onClick={() => handleQualityChange(q)}
-              className={`px-2 py-1.5 rounded-md text-[10px] font-medium transition-all duration-200 ${
-                quality === q
-                  ? 'bg-primary/20 text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {q === 'high' ? '✦' : q === 'balanced' ? '◆' : '○'} {q.charAt(0).toUpperCase() + q.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        {/* Actions */}
-        {/* Scene mode */}
-        <div className="flex gap-0.5 bg-background/70 backdrop-blur-md border border-border/50 rounded-lg p-0.5">
+        {(['high', 'balanced', 'low'] as QualityLevel[]).map((q) => (
           <button
-            onClick={() => setSceneMode('studio')}
-            title="Studio mode"
-            className={`px-2 py-1.5 rounded-md text-[10px] font-medium transition-all duration-200 ${
-              sceneMode === 'studio' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
-            }`}
+            key={q}
+            onClick={() => handleQualityChange(q)}
+            title={q}
+            className={`p-2 rounded-md text-[10px] font-medium transition-all ${quality === q ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
           >
-            <Warehouse className="w-3 h-3" />
+            {q === 'high' ? '✦' : q === 'balanced' ? '◆' : '○'}
           </button>
-          <button
-            onClick={() => setSceneMode('environment')}
-            title="Environment mode"
-            className={`px-2 py-1.5 rounded-md text-[10px] font-medium transition-all duration-200 ${
-              sceneMode === 'environment' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Sun className="w-3 h-3" />
-          </button>
-        </div>
-
-        <div className="flex gap-0.5 bg-background/70 backdrop-blur-md border border-border/50 rounded-lg p-0.5">
-          <button
-            onClick={() => setShowDims(prev => prev === 'off' ? 'key' : prev === 'key' ? 'all' : 'off')}
-            title={`Dimensions: ${showDims}`}
-            className={`px-2 py-1.5 rounded-md text-[10px] font-medium transition-all duration-200 ${
-              showDims !== 'off' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Eye className="w-3 h-3" />
-            {showDims !== 'off' && <span className="ml-1 text-[8px]">{showDims}</span>}
-          </button>
-          <button
-            onClick={() => setAutoRotate(!autoRotate)}
-            title="Auto-rotate"
-            className={`px-2 py-1.5 rounded-md text-[10px] font-medium transition-all duration-200 ${
-              autoRotate ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <RotateCw className="w-3 h-3" />
-          </button>
-          <button
-            onClick={handleReset}
-            title="Reset camera"
-            className="px-2 py-1.5 rounded-md text-[10px] font-medium text-muted-foreground hover:text-foreground transition-all duration-200"
-          >
-            <RotateCcw className="w-3 h-3" />
-          </button>
-          <button
-            onClick={handleScreenshot}
-            title="Screenshot"
-            className="px-2 py-1.5 rounded-md text-[10px] font-medium text-muted-foreground hover:text-foreground transition-all duration-200"
-          >
-            <Camera className="w-3 h-3" />
-          </button>
-        </div>
+        ))}
       </div>
 
       {/* Hint */}
-      <p className="absolute bottom-3 left-3 text-[9px] text-muted-foreground/50 hidden sm:block">
+      <p className="absolute bottom-3 left-3 text-[9px] text-muted-foreground/60 hidden sm:block">
         Drag to orbit · Scroll to zoom · Shift+drag to pan
       </p>
     </div>
