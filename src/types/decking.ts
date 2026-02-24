@@ -3,6 +3,23 @@
 export type DeckingMaterial = 'composite' | 'cedar' | 'pine' | 'merbau' | 'spotted-gum';
 export type RailingStyle = 'none' | 'glass' | 'wire' | 'timber';
 export type RailingPosition = 'front' | 'left' | 'right' | 'back';
+export type FoundationType = 'landscape' | 'concrete-thick' | 'concrete-thin';
+
+export interface FoundationConfig {
+  type: FoundationType;
+  /** Excavator hourly rate (landscape only) */
+  excavatorRate: number;
+  /** Float charge 2-way (landscape only) */
+  floatCharge: number;
+  /** Bracket cost each (concrete-thick only) */
+  bracketCostEach: number;
+  /** Chemset + bolts cost (concrete-thick only) */
+  chemsetCost: number;
+  /** Labour rate per hour */
+  labourRate: number;
+  /** Concrete cost per m³ (concrete-thin only) */
+  concreteCostPerM3: number;
+}
 
 export interface DeckingConfig {
   material: DeckingMaterial;
@@ -13,6 +30,7 @@ export interface DeckingConfig {
   color: string;
   railingStyle: RailingStyle;
   railingPositions: RailingPosition[];
+  foundation: FoundationConfig;
   stairs: {
     enabled: boolean;
     position: 'front' | 'left' | 'right';
@@ -61,6 +79,16 @@ export const DECKING_COLORS: Record<DeckingMaterial, { name: string; hex: string
   ],
 };
 
+export const DEFAULT_FOUNDATION_CONFIG: FoundationConfig = {
+  type: 'landscape',
+  excavatorRate: 200,
+  floatCharge: 600,
+  bracketCostEach: 25,
+  chemsetCost: 120,
+  labourRate: 110,
+  concreteCostPerM3: 250,
+};
+
 export const DEFAULT_DECKING_CONFIG: DeckingConfig = {
   material: 'composite',
   length: 5,
@@ -70,6 +98,7 @@ export const DEFAULT_DECKING_CONFIG: DeckingConfig = {
   color: '#5c3d2e',
   railingStyle: 'none',
   railingPositions: ['front', 'left', 'right'],
+  foundation: { ...DEFAULT_FOUNDATION_CONFIG },
   stairs: { enabled: false, position: 'front', width: 1.2 },
   accessories: { lighting: false, seating: false },
 };
