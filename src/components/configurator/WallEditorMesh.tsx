@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useCallback } from "react";
+import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import { Text, Line, Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -26,6 +26,22 @@ function DimensionSlider({ value, min, max, step, unit, onClose, onChange }: {
   onClose: () => void;
   onChange: (v: number) => void;
 }) {
+  const [localValue, setLocalValue] = useState(value);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync local when external value changes (e.g. from another source)
+  useEffect(() => { setLocalValue(value); }, [value]);
+
+  const handleChange = useCallback((v: number) => {
+    setLocalValue(v);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => onChange(v), 1000);
+  }, [onChange]);
+
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, []);
+
   return (
     <div
       className="bg-card border border-border rounded-lg shadow-xl p-3 min-w-[200px]"
@@ -34,7 +50,7 @@ function DimensionSlider({ value, min, max, step, unit, onClose, onChange }: {
     >
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-bold text-foreground">
-          {value.toFixed(step < 1 ? 1 : 0)} {unit}
+          {localValue.toFixed(step < 1 ? 1 : 0)} {unit}
         </span>
         <button
           onClick={onClose}
@@ -48,8 +64,8 @@ function DimensionSlider({ value, min, max, step, unit, onClose, onChange }: {
         min={min}
         max={max}
         step={step}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
+        value={localValue}
+        onChange={(e) => handleChange(parseFloat(e.target.value))}
         className="w-full accent-primary h-2 cursor-pointer"
       />
       <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
@@ -224,19 +240,14 @@ export default function WallEditorMesh({
     });
   }, [onSliderOpen]);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const handleSliderChange = useCallback((dim: 'width' | 'depth' | 'height', value: number) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      if (dim === 'width') {
-        onChange({ ...config, width: value });
-      } else if (dim === 'depth') {
-        onChange({ ...config, depth: value });
-      } else {
-        onChange({ ...config, height: value });
-      }
-    }, 1000);
+    if (dim === 'width') {
+      onChange({ ...config, width: value });
+    } else if (dim === 'depth') {
+      onChange({ ...config, depth: value });
+    } else {
+      onChange({ ...config, height: value });
+    }
   }, [config, onChange]);
 
   const dimOffset = 0.6;
