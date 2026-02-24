@@ -10,12 +10,13 @@ interface WallEditorMeshProps {
   selectedWall: WallSide | null;
   onSelectWall: (side: WallSide | null) => void;
   showDimensions: 'off' | 'key' | 'all';
+  onDragging?: (isDragging: boolean) => void;
 }
 
 const mm = (v: number) => v / 1000;
 
 /* ── Draggable Dimension Arrow ────────────────── */
-function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offsetDir, color = '#333333' }: {
+function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offsetDir, color = '#333333', onDragStateChange }: {
   start: [number, number, number];
   end: [number, number, number];
   label: string;
@@ -24,6 +25,7 @@ function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offset
   onDrag: (deltaMm: number) => void;
   offsetDir: [number, number, number];
   color?: string;
+  onDragStateChange?: (isDragging: boolean) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -65,12 +67,13 @@ function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offset
 
   const startDragFromPoint = useCallback((pt: THREE.Vector3) => {
     setDragging(true);
+    onDragStateChange?.(true);
     dragStart.current = pt.clone();
     const normal = new THREE.Vector3(0, 1, 0);
     if (axis === 'y') normal.set(0, 0, 1);
     plane.current.setFromNormalAndCoplanarPoint(normal, pt);
     (gl.domElement as HTMLElement).style.cursor = 'grabbing';
-  }, [axis, gl]);
+  }, [axis, gl, onDragStateChange]);
 
   const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>, which: 'start' | 'end') => {
     if (activated !== which) return; // must be double-click activated first
@@ -111,9 +114,10 @@ function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offset
 
   const handlePointerUp = useCallback(() => {
     setDragging(false);
+    onDragStateChange?.(false);
     dragStart.current = null;
     (gl.domElement as HTMLElement).style.cursor = activated ? 'grab' : '';
-  }, [gl, activated]);
+  }, [gl, activated, onDragStateChange]);
 
   const handleDoubleClick = useCallback((which: 'start' | 'end') => {
     setActivated(prev => prev === which ? null : which);
@@ -239,7 +243,7 @@ function WallOutline({ position, rotation, size, isSelected, isHovered }: {
 
 /* ── Main WallEditorMesh ──────────────────────── */
 export default function WallEditorMesh({
-  config, onChange, selectedWall, onSelectWall, showDimensions,
+  config, onChange, selectedWall, onSelectWall, showDimensions, onDragging,
 }: WallEditorMeshProps) {
   const [hoveredWall, setHoveredWall] = useState<WallSide | null>(null);
   const { width, depth, height, walls } = config;
@@ -297,6 +301,7 @@ export default function WallEditorMesh({
         axis="x"
         onDrag={handleWidthDrag}
         offsetDir={[0, 0.2, 0]}
+        onDragStateChange={onDragging}
       />
 
       {/* B — Right edge (depth) */}
@@ -308,6 +313,7 @@ export default function WallEditorMesh({
         axis="z"
         onDrag={(d) => handleDepthDrag(-d)}
         offsetDir={[0.2, 0.2, 0]}
+        onDragStateChange={onDragging}
       />
 
       {/* C — Back edge (width) */}
@@ -319,6 +325,7 @@ export default function WallEditorMesh({
         axis="x"
         onDrag={(d) => handleWidthDrag(-d)}
         offsetDir={[0, 0.2, 0]}
+        onDragStateChange={onDragging}
       />
 
       {/* D — Left edge (depth) */}
@@ -330,6 +337,7 @@ export default function WallEditorMesh({
         axis="z"
         onDrag={handleDepthDrag}
         offsetDir={[-0.2, 0.2, 0]}
+        onDragStateChange={onDragging}
       />
 
       {/* Height — right-back corner */}
@@ -341,6 +349,7 @@ export default function WallEditorMesh({
         axis="y"
         onDrag={handleHeightDrag}
         offsetDir={[0.2, 0, 0]}
+        onDragStateChange={onDragging}
       />
 
       {/* ── Wall selection overlays (only in wall edit mode) ── */}
