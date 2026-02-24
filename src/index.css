@@ -2,52 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Archivo:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Archivo:wght@400;500;600;700;800&display=swap');
 
 @layer base {
   :root {
     --background: 0 0% 98%;
-    --foreground: 0 0% 15%;
+    --foreground: 0 0% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 15%;
+    --card-foreground: 0 0% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 15%;
+    --popover-foreground: 0 0% 12%;
 
-    --primary: 120 40% 40%;
+    --primary: 142 44% 42%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 94%;
-    --secondary-foreground: 0 0% 35%;
+    --secondary: 0 0% 95.5%;
+    --secondary-foreground: 0 0% 32%;
 
-    --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 50%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 46%;
 
-    --accent: 120 40% 40%;
+    --accent: 142 44% 42%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 88%;
-    --input: 0 0% 88%;
-    --ring: 120 40% 40%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 142 44% 42%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
     --gold: 40 52% 56%;
     --gold-light: 40 60% 72%;
     --gold-dark: 38 45% 38%;
 
+    --panel-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+    --panel-shadow-lg: 0 4px 24px -4px rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 30%;
-    --sidebar-primary: 120 40% 40%;
+    --sidebar-primary: 142 44% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 96%;
     --sidebar-accent-foreground: 0 0% 30%;
     --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 120 40% 40%;
+    --sidebar-ring: 142 44% 42%;
   }
 }
 
@@ -57,26 +60,44 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
   h1, h2, h3, h4 {
     font-family: 'Archivo', sans-serif;
+    letter-spacing: -0.01em;
   }
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(var(--background));
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
-  border-radius: 3px;
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
+}
+
+/* Glass morphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+}
+
+/* Premium step transition */
+.step-content-enter {
+  animation: stepIn 0.25s ease-out;
+}
+@keyframes stepIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }

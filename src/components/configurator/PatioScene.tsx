@@ -99,6 +99,25 @@ function AutoRotate({ enabled, speed = 0.3 }: { enabled: boolean; speed?: number
   return null;
 }
 
+/* ── Toolbar button ────────────────────────────────────────── */
+function ToolBtn({ active, onClick, title, children, className = '' }: {
+  active?: boolean; onClick: () => void; title: string; children: React.ReactNode; className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`p-2 rounded-lg text-[11px] font-medium transition-all duration-150 ${
+        active
+          ? 'bg-primary/12 text-primary'
+          : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+      } ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function PatioScene({
   config, onPartClick, debugMode, debugParts, showDebugLabels,
   quality: externalQuality, onQualityChange,
@@ -286,56 +305,42 @@ export default function PatioScene({
         <AutoRotate enabled={autoRotate} />
       </Canvas>
 
-      {/* ── Camera presets — top left ── */}
-      <div className="absolute top-3 left-3 flex gap-1">
+      {/* ── Camera presets — top left — glass pill ── */}
+      <div className="absolute top-3 left-3 flex gap-0.5 glass rounded-xl border border-border/60 p-1 shadow-sm">
         {(['iso', 'front', 'left', 'right', 'under', 'top'] as CameraPreset[]).map((p) => (
           <button
             key={p}
             onClick={() => setCameraPreset(p)}
-            className="px-2 py-1 rounded-md bg-card/80 backdrop-blur border border-border text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-card transition-all capitalize"
+            className="px-2.5 py-1.5 rounded-lg text-[10px] font-semibold tracking-wide uppercase text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-150 capitalize"
           >
             {p}
           </button>
         ))}
       </div>
 
-      {/* ── Bottom toolbar — centered icons ── */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 bg-card/90 backdrop-blur border border-border rounded-lg p-1 shadow-sm">
-        <button onClick={handleReset} title="Reset camera" className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-all">
-          <RotateCcw className="w-4 h-4" />
-        </button>
-        <button onClick={() => setAutoRotate(!autoRotate)} title="Auto-rotate" className={`p-2 rounded-md transition-all ${autoRotate ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}>
-          <RotateCw className="w-4 h-4" />
-        </button>
-        <button onClick={() => setShowDims(prev => prev === 'off' ? 'key' : prev === 'key' ? 'all' : 'off')} title={`Dimensions: ${showDims}`} className={`p-2 rounded-md transition-all ${showDims !== 'off' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}>
-          <Eye className="w-4 h-4" />
-        </button>
-        <button onClick={handleScreenshot} title="Screenshot" className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-all">
-          <Camera className="w-4 h-4" />
-        </button>
-        <div className="w-px bg-border mx-0.5" />
-        <button onClick={() => setSceneMode('studio')} title="Studio" className={`p-2 rounded-md transition-all ${sceneMode === 'studio' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}>
-          <Warehouse className="w-4 h-4" />
-        </button>
-        <button onClick={() => setSceneMode('environment')} title="Environment" className={`p-2 rounded-md transition-all ${sceneMode === 'environment' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}>
-          <Sun className="w-4 h-4" />
-        </button>
-        <div className="w-px bg-border mx-0.5" />
-        {/* Quality */}
+      {/* ── Bottom toolbar — centered glass bar ── */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-0.5 glass rounded-xl border border-border/60 p-1 shadow-md">
+        <ToolBtn onClick={handleReset} title="Reset camera"><RotateCcw className="w-4 h-4" /></ToolBtn>
+        <ToolBtn active={autoRotate} onClick={() => setAutoRotate(!autoRotate)} title="Auto-rotate"><RotateCw className="w-4 h-4" /></ToolBtn>
+        <ToolBtn active={showDims !== 'off'} onClick={() => setShowDims(prev => prev === 'off' ? 'key' : prev === 'key' ? 'all' : 'off')} title={`Dimensions: ${showDims}`}><Eye className="w-4 h-4" /></ToolBtn>
+        <ToolBtn onClick={handleScreenshot} title="Screenshot"><Camera className="w-4 h-4" /></ToolBtn>
+
+        <div className="w-px h-5 bg-border/60 mx-0.5" />
+
+        <ToolBtn active={sceneMode === 'studio'} onClick={() => setSceneMode('studio')} title="Studio"><Warehouse className="w-4 h-4" /></ToolBtn>
+        <ToolBtn active={sceneMode === 'environment'} onClick={() => setSceneMode('environment')} title="Environment"><Sun className="w-4 h-4" /></ToolBtn>
+
+        <div className="w-px h-5 bg-border/60 mx-0.5" />
+
         {(['high', 'balanced', 'low'] as QualityLevel[]).map((q) => (
-          <button
-            key={q}
-            onClick={() => handleQualityChange(q)}
-            title={q}
-            className={`p-2 rounded-md text-[10px] font-medium transition-all ${quality === q ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
-          >
+          <ToolBtn key={q} active={quality === q} onClick={() => handleQualityChange(q)} title={q}>
             {q === 'high' ? '✦' : q === 'balanced' ? '◆' : '○'}
-          </button>
+          </ToolBtn>
         ))}
       </div>
 
       {/* Hint */}
-      <p className="absolute bottom-3 left-3 text-[9px] text-muted-foreground/60 hidden sm:block">
+      <p className="absolute bottom-3 left-3 text-[9px] text-muted-foreground/50 hidden sm:block select-none">
         Drag to orbit · Scroll to zoom · Shift+drag to pan
       </p>
     </div>
