@@ -35,7 +35,7 @@ function DimensionSlider({ value, min, max, step, unit, onClose, onChange }: {
   const handleChange = useCallback((v: number) => {
     setLocalValue(v);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => onChange(v), 1000);
+    debounceRef.current = setTimeout(() => onChange(v), 500);
   }, [onChange]);
 
   useEffect(() => {
