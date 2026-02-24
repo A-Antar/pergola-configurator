@@ -224,14 +224,19 @@ export default function WallEditorMesh({
     });
   }, [onSliderOpen]);
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleSliderChange = useCallback((dim: 'width' | 'depth' | 'height', value: number) => {
-    if (dim === 'width') {
-      onChange({ ...config, width: value });
-    } else if (dim === 'depth') {
-      onChange({ ...config, depth: value });
-    } else {
-      onChange({ ...config, height: value });
-    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (dim === 'width') {
+        onChange({ ...config, width: value });
+      } else if (dim === 'depth') {
+        onChange({ ...config, depth: value });
+      } else {
+        onChange({ ...config, height: value });
+      }
+    }, 1000);
   }, [config, onChange]);
 
   const dimOffset = 0.6;
