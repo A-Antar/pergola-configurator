@@ -697,27 +697,27 @@ function FoundationBase({ foundationType, width, depth, postPositions, colSize }
   const padD = depth + 4;
 
   if (foundationType === 'landscape') {
-    // Soil/grass ground with excavation holes at post positions
+    // Soil/grass ground with cylindrical excavation holes at post positions
     return (
       <group>
         {/* Grass layer */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={FOUNDATION_MATERIALS.grass} receiveShadow>
           <planeGeometry args={[padW, padD]} />
         </mesh>
-        {/* Soil area under the patio footprint */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.005, 0]} material={FOUNDATION_MATERIALS.soil} receiveShadow>
+        {/* Concrete-coloured area under the patio footprint */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.005, 0]} material={FOUNDATION_MATERIALS.concrete} receiveShadow>
           <planeGeometry args={[width + 0.6, depth + 0.6]} />
         </mesh>
-        {/* Excavation holes (600×600×600mm) at each post */}
+        {/* Excavation holes (600mm diameter × 600mm deep) at each post */}
         {postPositions.map(([x, z], i) => (
           <group key={`hole-${i}`} position={[x, 0, z]}>
-            {/* Hole depression */}
+            {/* Cylindrical hole depression */}
             <mesh position={[0, -0.3, 0]} material={FOUNDATION_MATERIALS.soilDark}>
-              <boxGeometry args={[0.6, 0.6, 0.6]} />
+              <cylinderGeometry args={[0.3, 0.3, 0.6, 16]} />
             </mesh>
-            {/* Hole rim */}
-            <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.soilDark}>
-              <ringGeometry args={[0.25, 0.35, 8]} />
+            {/* Hole rim on surface */}
+            <mesh position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.holeEdge}>
+              <ringGeometry args={[0.28, 0.34, 16]} />
             </mesh>
           </group>
         ))}
