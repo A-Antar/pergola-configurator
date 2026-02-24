@@ -46,6 +46,38 @@ export function calculateDeckEstimate(config: DeckingConfig) {
     { label: 'Labour', amount: Math.round(labourCost) },
   ];
 
+  // ─── Foundation costs ──────────────────────────────
+  const f = config.foundation;
+  const columnCount = postCount; // columns = posts
+  if (f.type === 'landscape') {
+    if (columnCount <= 2) {
+      // Hand excavation: labourer rate × 6 hours
+      const handCost = f.labourRate * 6;
+      breakdown.push({ label: `Hand excavation (${columnCount} holes, 6hrs)`, amount: Math.round(handCost) });
+    } else {
+      // 1.5T Excavator 8hrs + 2-way float
+      const excCost = f.excavatorRate * 8 + f.floatCharge;
+      breakdown.push({ label: `Excavator 8hrs + float`, amount: Math.round(excCost) });
+    }
+  } else if (f.type === 'concrete-thick') {
+    const bracketsCost = columnCount * f.bracketCostEach;
+    const labourFoundation = f.labourRate * 6; // 6hr minimum
+    breakdown.push({ label: `Brackets (×${columnCount})`, amount: Math.round(bracketsCost) });
+    breakdown.push({ label: 'Chemset + bolts', amount: Math.round(f.chemsetCost) });
+    breakdown.push({ label: 'Foundation labour (6hr min)', amount: Math.round(labourFoundation) });
+  } else if (f.type === 'concrete-thin') {
+    // Core drill + concrete fill per hole: π × 0.3² × 0.6 = ~0.1696 m³ per hole
+    const volumePerHole = Math.PI * 0.3 * 0.3 * 0.6;
+    const totalVolume = volumePerHole * columnCount;
+    const concreteCost = totalVolume * f.concreteCostPerM3;
+    const labourFoundation = f.labourRate * 6;
+    breakdown.push({ label: `Core drill + concrete (${columnCount} holes, ${totalVolume.toFixed(2)}m³)`, amount: Math.round(concreteCost) });
+    breakdown.push({ label: 'Foundation labour (6hr min)', amount: Math.round(labourFoundation) });
+    // Column extension cost: extra 0.6m per post at post material rate
+    const extensionCost = columnCount * 0.6 * p.bearerRatePerLm;
+    breakdown.push({ label: `Column extension (+600mm ×${columnCount})`, amount: Math.round(extensionCost) });
+  }
+
   // Railings per linear metre of perimeter where enabled
   if (config.railingStyle !== 'none' && config.railingPositions.length > 0) {
     let railLength = 0;
