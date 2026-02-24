@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import type { PatioConfig, AttachmentSide } from "@/types/configurator";
-import type { FoundationType } from "@/types/decking";
 import {
   selectPatioType,
   selectBeamForSpan,
@@ -64,16 +63,6 @@ function TekScrew({ position, rotation, material }: {
 
 /**
  * Post bracket — L-shaped steel bracket that clips onto post top.
- * The beam slides into the channel formed by the bracket flanges.
- * Screwed with 10x25 hex self-tappers through bracket into beam flute.
- *
- *  Side view:
- *   ┌─────────┐  ← top flange (sits under beam)
- *   │         │
- *   │  │   │  │  ← vertical flanges (screw into beam sides)
- *   │  │   │  │
- *   └──┘   └──┘
- *      POST
  */
 function PostBracket({ position, colSize, beamH, beamW }: {
   position: [number, number, number];
@@ -81,33 +70,27 @@ function PostBracket({ position, colSize, beamH, beamW }: {
   beamH: number;
   beamW: number;
 }) {
-  const flangeThick = 0.004; // 4mm steel
-  const flangeHeight = beamH * 0.7; // bracket wraps 70% of beam height
-  const bracketWidth = mm(colSize) + 0.024; // slightly wider than post
+  const flangeThick = 0.004;
+  const flangeHeight = beamH * 0.7;
+  const bracketWidth = mm(colSize) + 0.024;
 
   return (
     <group position={position}>
-      {/* Base plate — sits on top of post */}
       <mesh material={MATERIALS.bracket}>
         <boxGeometry args={[bracketWidth, flangeThick, bracketWidth]} />
       </mesh>
-      {/* Left vertical flange */}
       <mesh position={[-bracketWidth / 2 + flangeThick / 2, flangeHeight / 2, 0]} material={MATERIALS.bracket}>
         <boxGeometry args={[flangeThick, flangeHeight, bracketWidth]} />
       </mesh>
-      {/* Right vertical flange */}
       <mesh position={[bracketWidth / 2 - flangeThick / 2, flangeHeight / 2, 0]} material={MATERIALS.bracket}>
         <boxGeometry args={[flangeThick, flangeHeight, bracketWidth]} />
       </mesh>
-      {/* Front vertical flange */}
       <mesh position={[0, flangeHeight / 2, bracketWidth / 2 - flangeThick / 2]} material={MATERIALS.bracket}>
         <boxGeometry args={[bracketWidth, flangeHeight, flangeThick]} />
       </mesh>
-      {/* Back vertical flange */}
       <mesh position={[0, flangeHeight / 2, -bracketWidth / 2 + flangeThick / 2]} material={MATERIALS.bracket}>
         <boxGeometry args={[bracketWidth, flangeHeight, flangeThick]} />
       </mesh>
-      {/* Tek screws — 2 per side (left/right flanges into beam) */}
       {[-1, 1].map((side) => (
         [0.3, 0.6].map((t, si) => (
           <TekScrew
@@ -135,15 +118,12 @@ function Columns({ positions, height, colSize, frameMat, decorative, beamH, beam
     <>
       {positions.map(([x, z], i) => (
         <group key={`col-${i}`}>
-          {/* Post — stops below beam connection */}
           <mesh position={[x, postH / 2, z]} material={frameMat} castShadow>
             <boxGeometry args={[s, postH, s]} />
           </mesh>
-          {/* Post cap — fills gap between post top and beam */}
           <mesh position={[x, postH + gap + capH / 2, z]} material={MATERIALS.postCap}>
             <boxGeometry args={[s + 0.012, capH, s + 0.012]} />
           </mesh>
-          {/* Post bracket — L-shaped bracket on top where beam connects */}
           <PostBracket
             position={[x, height - beamH, z]}
             colSize={colSize}
@@ -196,23 +176,6 @@ function WallBrackets({ config, beam, frameMat }: {
   return <>{brackets}</>;
 }
 
-/**
- * Beam-to-beam bracket — L-shaped connector at corners.
- * One flange slides INSIDE the incoming beam end.
- * The other flange is screwed to the face of the through beam.
- *
- *  Top-down view (corner):
- *
- *   THROUGH BEAM (continuous)
- *   ═══════════════════════
- *         ┌──┐
- *         │  │ ← bracket flange screwed to through beam face
- *         │  │
- *         │  │ ← bracket flange inside incoming beam
- *         │  │
- *   ══════╧══╧═══
- *   INCOMING BEAM
- */
 function BeamToBeamBracket({ position, rotation, beamH, beamW }: {
   position: [number, number, number];
   rotation?: [number, number, number];
@@ -220,20 +183,17 @@ function BeamToBeamBracket({ position, rotation, beamH, beamW }: {
   beamW: number;
 }) {
   const flangeThick = 0.004;
-  const flangeDepthInBeam = beamW * 0.6; // how far the flange goes inside beam
+  const flangeDepthInBeam = beamW * 0.6;
   const flangeH = beamH * 0.85;
 
   return (
     <group position={position} rotation={rotation}>
-      {/* Vertical plate — screwed to face of through beam */}
       <mesh material={MATERIALS.beamBracket}>
         <boxGeometry args={[flangeThick, flangeH, beamW + 0.01]} />
       </mesh>
-      {/* Horizontal flange — slides inside incoming beam */}
       <mesh position={[flangeDepthInBeam / 2, 0, 0]} material={MATERIALS.beamBracket}>
         <boxGeometry args={[flangeDepthInBeam, flangeH, flangeThick]} />
       </mesh>
-      {/* Tek screws on the face plate — 2 rows of 2 */}
       {[-1, 1].map((vSide) =>
         [-1, 1].map((hSide) => (
           <TekScrew
@@ -256,23 +216,19 @@ function Beams({ config, beam, patioType, frameMat }: {
   const bW = mm(150);
   const beamY = height - bH / 2;
   const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
-  const gap = 0.006; // gap at beam ends for bracket visibility
+  const gap = 0.006;
 
   return (
     <>
-      {/* Back beam — runs full width between side beams */}
       <mesh position={[0, beamY, -depth / 2]} material={frameMat} castShadow>
         <boxGeometry args={[width - bW - gap * 2, bH, bW]} />
       </mesh>
-      {/* Left side beam — continuous "through" beam */}
       <mesh position={[-width / 2, beamY, overhang / 2]} material={frameMat} castShadow>
         <boxGeometry args={[bW, bH, depth + overhang]} />
       </mesh>
-      {/* Right side beam — continuous "through" beam */}
       <mesh position={[width / 2, beamY, overhang / 2]} material={frameMat} castShadow>
         <boxGeometry args={[bW, bH, depth + overhang]} />
       </mesh>
-      {/* Front beam — runs between side beams */}
       <mesh position={[0, beamY, depth / 2 + overhang]} material={frameMat} castShadow>
         <boxGeometry args={[width - bW - gap * 2, bH, bW]} />
       </mesh>
@@ -290,35 +246,10 @@ function Beams({ config, beam, patioType, frameMat }: {
         </>
       )}
 
-      {/* Beam-to-beam brackets at corners — L-shaped, incoming beam butts into through beam */}
-      {/* Back-left: back beam incoming from right, left beam is through */}
-      <BeamToBeamBracket
-        position={[-width / 2 + bW / 2 + 0.002, beamY, -depth / 2]}
-        rotation={[0, 0, 0]}
-        beamH={bH}
-        beamW={bW}
-      />
-      {/* Back-right: back beam incoming from left, right beam is through */}
-      <BeamToBeamBracket
-        position={[width / 2 - bW / 2 - 0.002, beamY, -depth / 2]}
-        rotation={[0, Math.PI, 0]}
-        beamH={bH}
-        beamW={bW}
-      />
-      {/* Front-left: front beam incoming from right, left beam is through */}
-      <BeamToBeamBracket
-        position={[-width / 2 + bW / 2 + 0.002, beamY, depth / 2 + overhang]}
-        rotation={[0, 0, 0]}
-        beamH={bH}
-        beamW={bW}
-      />
-      {/* Front-right: front beam incoming from left, right beam is through */}
-      <BeamToBeamBracket
-        position={[width / 2 - bW / 2 - 0.002, beamY, depth / 2 + overhang]}
-        rotation={[0, Math.PI, 0]}
-        beamH={bH}
-        beamW={bW}
-      />
+      <BeamToBeamBracket position={[-width / 2 + bW / 2 + 0.002, beamY, -depth / 2]} rotation={[0, 0, 0]} beamH={bH} beamW={bW} />
+      <BeamToBeamBracket position={[width / 2 - bW / 2 - 0.002, beamY, -depth / 2]} rotation={[0, Math.PI, 0]} beamH={bH} beamW={bW} />
+      <BeamToBeamBracket position={[-width / 2 + bW / 2 + 0.002, beamY, depth / 2 + overhang]} rotation={[0, 0, 0]} beamH={bH} beamW={bW} />
+      <BeamToBeamBracket position={[width / 2 - bW / 2 - 0.002, beamY, depth / 2 + overhang]} rotation={[0, Math.PI, 0]} beamH={bH} beamW={bW} />
     </>
   );
 }
@@ -484,7 +415,7 @@ function createTriangleGeo(baseWidth: number, peakHeight: number): THREE.BufferG
      hw, 0, 0,
      0, peakHeight, 0,
   ]);
-  const normals = new Float32Array([0,0,1, 0,0,1, 0,0,1]);
+  const normals = new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
@@ -497,60 +428,32 @@ function GableRoof({ width, depth, roofY, gableHeight, sheetThick, roofMat, fram
   roofMat: THREE.Material; frameMat: THREE.Material;
 }) {
   const halfW = width / 2;
-  const angle = Math.atan2(gableHeight, halfW);
   const slopeLen = Math.sqrt(halfW * halfW + gableHeight * gableHeight);
-  const pivotXL = -halfW;
-  const pivotXR = halfW;
-  const midSlopeX = slopeLen / 2;
+  const slopeAngle = Math.atan2(gableHeight, halfW);
 
   return (
-    <>
-      <group position={[pivotXL, roofY, 0]} rotation={[0, 0, angle]}>
-        <mesh position={[midSlopeX, sheetThick / 2, 0]} material={roofMat} castShadow receiveShadow>
-          <boxGeometry args={[slopeLen, sheetThick, depth]} />
-        </mesh>
-      </group>
-      <group position={[pivotXR, roofY, 0]} rotation={[0, 0, Math.PI - angle]}>
-        <mesh position={[midSlopeX, sheetThick / 2, 0]} material={roofMat} castShadow receiveShadow>
-          <boxGeometry args={[slopeLen, sheetThick, depth]} />
-        </mesh>
-      </group>
-
-      <mesh position={[0, roofY + gableHeight + 0.015, 0]} material={frameMat}>
-        <boxGeometry args={[0.08, 0.04, depth + 0.06]} />
+    <group>
+      {/* Left slope */}
+      <mesh position={[-halfW / 2, roofY + gableHeight / 2, 0]} rotation={[0, 0, slopeAngle]} material={roofMat} castShadow>
+        <boxGeometry args={[slopeLen, sheetThick, depth]} />
       </mesh>
-      <mesh position={[0, roofY + gableHeight + 0.038, 0]} material={frameMat}>
-        <boxGeometry args={[0.2, 0.006, depth + 0.08]} />
+      {/* Right slope */}
+      <mesh position={[halfW / 2, roofY + gableHeight / 2, 0]} rotation={[0, 0, -slopeAngle]} material={roofMat} castShadow>
+        <boxGeometry args={[slopeLen, sheetThick, depth]} />
       </mesh>
-
-      {[-1, 1].map((side) => {
-        const triGeo = createTriangleGeo(width, gableHeight);
-        return (
-          <mesh key={`gable-tri-${side}`} geometry={triGeo} position={[0, roofY, (depth / 2 + 0.005) * side]} material={roofMat} />
-        );
-      })}
-
-      {[-1, 1].map((side) => {
-        const z = (depth / 2 + 0.01) * side;
-        return (
-          <group key={`gable-trim-${side}`}>
-            <group position={[-halfW, roofY, z]} rotation={[0, 0, angle]}>
-              <mesh position={[slopeLen / 2, 0.015, 0]} material={frameMat}>
-                <boxGeometry args={[slopeLen, 0.03, 0.04]} />
-              </mesh>
-            </group>
-            <group position={[halfW, roofY, z]} rotation={[0, 0, Math.PI - angle]}>
-              <mesh position={[slopeLen / 2, 0.015, 0]} material={frameMat}>
-                <boxGeometry args={[slopeLen, 0.03, 0.04]} />
-              </mesh>
-            </group>
-            <mesh position={[0, roofY, z]} material={frameMat}>
-              <boxGeometry args={[width, 0.03, 0.04]} />
-            </mesh>
-          </group>
-        );
-      })}
-    </>
+      {/* Ridge cap */}
+      <mesh position={[0, roofY + gableHeight + 0.01, 0]} material={frameMat}>
+        <boxGeometry args={[0.08, 0.03, depth + 0.1]} />
+      </mesh>
+      {/* Front infill */}
+      <mesh position={[0, roofY + gableHeight / 2, depth / 2]} material={frameMat}>
+        <primitive object={createTriangleGeo(width, gableHeight)} />
+      </mesh>
+      {/* Back infill */}
+      <mesh position={[0, roofY + gableHeight / 2, -depth / 2]} rotation={[0, Math.PI, 0]} material={frameMat}>
+        <primitive object={createTriangleGeo(width, gableHeight)} />
+      </mesh>
+    </group>
   );
 }
 
@@ -560,26 +463,30 @@ function GuttersAndDownpipes({ config, beam, patioType, frameMat }: {
   if (!config.accessories.gutters) return null;
   const { width, depth, height } = config;
   const bH = mm(beam.profileHeight);
+  const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
   const gutterW = 0.115;
   const gutterH = 0.075;
-  const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
   const frontZ = depth / 2 + overhang;
   const gutterY = height - bH - gutterH / 2;
+  const dpR = mm(DOWNPIPE.diameter) / 2;
 
   return (
     <>
-      <mesh position={[0, gutterY, frontZ + gutterW / 2]} material={frameMat}>
+      <mesh position={[0, gutterY, frontZ + gutterW / 2]} material={frameMat} castShadow>
         <boxGeometry args={[width + 0.15, gutterH, gutterW]} />
       </mesh>
-      {[-width / 2, width / 2].map((x, i) => (
-        <group key={`dp-${i}`}>
-          <mesh position={[x, height / 2 - bH / 2, frontZ + gutterW]} material={frameMat}>
-            <cylinderGeometry args={[mm(DOWNPIPE.diameter) / 2, mm(DOWNPIPE.diameter) / 2, height - bH, 8]} />
+      <mesh position={[width / 2 - 0.15, (gutterY) / 2, frontZ + gutterW]} castShadow material={frameMat}>
+        <cylinderGeometry args={[dpR, dpR, gutterY, 12]} />
+      </mesh>
+      <mesh position={[-width / 2 + 0.15, (gutterY) / 2, frontZ + gutterW]} castShadow material={frameMat}>
+        <cylinderGeometry args={[dpR, dpR, gutterY, 12]} />
+      </mesh>
+      {[width / 2 - 0.15, -width / 2 + 0.15].map((x, si) => (
+        [0.3, 0.6, 0.85].map((t, di) => (
+          <mesh key={`strap-${si}-${di}`} position={[x, gutterY * t, frontZ + gutterW]} material={MATERIALS.bracket}>
+            <boxGeometry args={[dpR * 2 + 0.02, 0.008, dpR * 2 + 0.02]} />
           </mesh>
-          <mesh position={[x, height * 0.4, frontZ + gutterW]} material={MATERIALS.bracket}>
-            <torusGeometry args={[mm(DOWNPIPE.diameter) / 2 + 0.005, 0.003, 6, 12]} />
-          </mesh>
-        </group>
+        ))
       ))}
     </>
   );
@@ -589,12 +496,16 @@ function DesignerBeam({ config, beam, patioType, frameMat }: {
   config: PatioConfig; beam: BeamSpec; patioType: PatioTypeSpec; frameMat: THREE.Material;
 }) {
   if (!config.accessories.designerBeam) return null;
-  const { width, height } = config;
+  const { width, depth, height } = config;
   const bH = mm(beam.profileHeight);
   const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
+  const frontZ = depth / 2 + overhang;
+  const bW = mm(150);
+  const fasH = bH * 1.4;
+
   return (
-    <mesh position={[0, height - bH * 1.5, config.depth / 2 + overhang + 0.01]} material={frameMat} castShadow>
-      <boxGeometry args={[width + 0.08, bH * 0.5, mm(beam.profileWidth) * 1.5]} />
+    <mesh position={[0, height - bH - fasH / 2 + 0.01, frontZ + bW / 2 + 0.005]} material={frameMat} castShadow>
+      <boxGeometry args={[width + bW + 0.02, fasH, 0.018]} />
     </mesh>
   );
 }
@@ -603,59 +514,61 @@ function Lights({ config, beam, frameMat }: {
   config: PatioConfig; beam: BeamSpec; frameMat: THREE.Material;
 }) {
   if (!config.accessories.lighting) return null;
-  const { width, depth, height, shape } = config;
+  const { width, depth, height } = config;
   const bH = mm(beam.profileHeight);
-  const isGable = shape === 'gable';
-  const gableH = isGable ? Math.min(width, depth) * 0.18 : 0;
-  const count = Math.max(2, Math.ceil(width / 1.5));
+  const lightY = height - bH - 0.02;
+  const cols = Math.max(2, Math.round(width / 2));
+  const rows = Math.max(1, Math.round(depth / 2.5));
+  const lights: JSX.Element[] = [];
 
-  return (
-    <>
-      {Array.from({ length: count }).map((_, i) => {
-        const x = -width / 2 + 0.4 + (i * (width - 0.8)) / Math.max(1, count - 1);
-        const gableOffset = isGable ? gableH * (1 - Math.abs(x) / (width / 2)) : 0;
-        const lightY = height - bH - 0.05 + gableOffset;
-        return (
-          <group key={`light-${i}`}>
-            <mesh position={[x, lightY, 0]} castShadow material={MATERIALS.lightFixture}>
-              <cylinderGeometry args={[0.05, 0.065, 0.025, 12]} />
-            </mesh>
-            <pointLight position={[x, lightY - 0.04, 0]} intensity={0.25} distance={3} color="#ffd699" />
-          </group>
-        );
-      })}
-    </>
-  );
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      const x = -width / 2 + (width / (cols + 1)) * (c + 1);
+      const z = -depth / 2 + (depth / (rows + 1)) * (r + 1);
+      lights.push(
+        <group key={`led-${c}-${r}`} position={[x, lightY, z]}>
+          <mesh material={MATERIALS.lightFixture}>
+            <cylinderGeometry args={[0.04, 0.04, 0.015, 16]} />
+          </mesh>
+          <mesh position={[0, -0.008, 0]}>
+            <cylinderGeometry args={[0.032, 0.032, 0.004, 16]} />
+            <meshStandardMaterial color="#fff8e0" emissive="#fff5cc" emissiveIntensity={0.6} />
+          </mesh>
+        </group>
+      );
+    }
+  }
+  return <>{lights}</>;
 }
 
 function Fan({ config, beam }: {
   config: PatioConfig; beam: BeamSpec;
 }) {
   if (!config.accessories.fans) return null;
-  const { width, depth, height, shape } = config;
+  const { width, depth, height } = config;
   const bH = mm(beam.profileHeight);
-  const isGable = shape === 'gable';
-  const gableH = isGable ? Math.min(width, depth) * 0.18 : 0;
-  const fanY = height - bH - 0.15 + gableH;
+  const fanY = height - bH - 0.35;
 
   return (
-    <group>
-      <mesh position={[0, fanY + 0.06, 0]} material={MATERIALS.fanMetal}>
-        <cylinderGeometry args={[0.015, 0.015, 0.12, 8]} />
+    <group position={[0, fanY, 0]}>
+      <mesh material={MATERIALS.fanMetal}>
+        <cylinderGeometry args={[0.015, 0.015, 0.3, 8]} />
       </mesh>
-      <mesh position={[0, fanY, 0]} material={MATERIALS.fanMetal}>
-        <cylinderGeometry args={[0.04, 0.04, 0.04, 12]} />
+      <mesh position={[0, -0.15, 0]} material={MATERIALS.fanMetal}>
+        <cylinderGeometry args={[0.06, 0.06, 0.04, 16]} />
       </mesh>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <mesh
-          key={`blade-${i}`}
-          position={[Math.cos(i * Math.PI * 2 / 5) * 0.22, fanY - 0.02, Math.sin(i * Math.PI * 2 / 5) * 0.22]}
-          rotation={[0, i * Math.PI * 2 / 5, 0]}
-          material={MATERIALS.fanMetal}
-        >
-          <boxGeometry args={[0.35, 0.008, 0.06]} />
-        </mesh>
-      ))}
+      {[0, 1, 2, 3, 4].map((i) => {
+        const angle = (i / 5) * Math.PI * 2;
+        return (
+          <mesh key={`blade-${i}`}
+            position={[Math.cos(angle) * 0.25, -0.17, Math.sin(angle) * 0.25]}
+            rotation={[0, -angle, 0.15]}
+            material={MATERIALS.fanMetal}
+          >
+            <boxGeometry args={[0.35, 0.005, 0.06]} />
+          </mesh>
+        );
+      })}
     </group>
   );
 }
@@ -666,7 +579,7 @@ function DecorativeColumns({ positions, height, frameMat }: {
   return (
     <>
       {positions.map(([x, z], i) => (
-        <mesh key={`dec-col-${i}`} position={[x, height * 0.35, z]} material={frameMat} castShadow>
+        <mesh key={`deco-col-${i}`} position={[x, height / 2, z]} material={frameMat} castShadow>
           <cylinderGeometry args={[0.055, 0.075, height * 0.7, 12]} />
         </mesh>
       ))}
@@ -674,120 +587,13 @@ function DecorativeColumns({ positions, height, frameMat }: {
   );
 }
 
-/* ── Foundation Base Visual ──────────────────────────────────── */
+/* ── Simple ground plane ─────────────────────────────────────── */
 
-const FOUNDATION_MATERIALS = {
-  grass: new THREE.MeshStandardMaterial({ color: new THREE.Color('#4a6b35'), roughness: 0.85, metalness: 0 }),
-  concrete: new THREE.MeshStandardMaterial({ color: new THREE.Color('#b0aca6'), roughness: 0.75, metalness: 0.05 }),
-  concreteCracked: new THREE.MeshStandardMaterial({ color: new THREE.Color('#a09a92'), roughness: 0.8, metalness: 0.03 }),
-  concreteDark: new THREE.MeshStandardMaterial({ color: new THREE.Color('#8a8580'), roughness: 0.85, metalness: 0.03 }),
-  crackLine: new THREE.MeshStandardMaterial({ color: new THREE.Color('#6b6560'), roughness: 0.9, metalness: 0, depthWrite: false }),
-  holeEdge: new THREE.MeshStandardMaterial({ color: new THREE.Color('#7a7570'), roughness: 0.7, metalness: 0.05 }),
-};
-
-function FoundationBase({ foundationType, width, depth, postPositions, colSize }: {
-  foundationType: FoundationType;
-  width: number;
-  depth: number;
-  postPositions: [number, number][];
-  colSize: number;
-}) {
-  const padW = width + 4;
-  const padD = depth + 4;
-
-  if (foundationType === 'landscape') {
-    // Soil/grass ground with cylindrical excavation holes at post positions
-    return (
-      <group>
-        {/* Grass layer */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={FOUNDATION_MATERIALS.grass} receiveShadow>
-          <planeGeometry args={[padW, padD]} />
-        </mesh>
-        {/* Concrete-coloured area under the patio footprint */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.005, 0]} material={FOUNDATION_MATERIALS.concrete} receiveShadow>
-          <planeGeometry args={[width + 0.6, depth + 0.6]} />
-        </mesh>
-        {/* Excavation holes (600mm diameter × 600mm deep) at each post */}
-        {postPositions.map(([x, z], i) => (
-          <group key={`hole-${i}`} position={[x, 0, z]}>
-            <mesh position={[0, -0.3, 0]} material={FOUNDATION_MATERIALS.concreteDark}>
-              <cylinderGeometry args={[0.3, 0.3, 0.6, 16]} />
-            </mesh>
-            <mesh position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.holeEdge}>
-              <ringGeometry args={[0.28, 0.34, 16]} />
-            </mesh>
-          </group>
-        ))}
-      </group>
-    );
-  }
-
-  if (foundationType === 'concrete-thick') {
-    // Thick concrete slab with bracket mounting points
-    const slabThick = 0.15;
-    return (
-      <group>
-        {/* Surrounding ground */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={FOUNDATION_MATERIALS.grass} receiveShadow>
-          <planeGeometry args={[padW, padD]} />
-        </mesh>
-        {/* Concrete slab */}
-        <mesh position={[0, -slabThick / 2, 0]} material={FOUNDATION_MATERIALS.concrete} receiveShadow castShadow>
-          <boxGeometry args={[width + 1.0, slabThick, depth + 1.0]} />
-        </mesh>
-        {/* Bracket mounting points at each post */}
-        {postPositions.map(([x, z], i) => (
-          <group key={`bracket-${i}`} position={[x, 0.002, z]}>
-            {/* Bracket base plate indicator */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.holeEdge}>
-              <planeGeometry args={[mm(colSize) + 0.04, mm(colSize) + 0.04]} />
-            </mesh>
-            {/* Bolt holes (4 corners) */}
-            {[[-1,-1],[-1,1],[1,-1],[1,1]].map(([dx, dz], bi) => (
-              <mesh key={`bolt-${bi}`} position={[dx * 0.04, 0.003, dz * 0.04]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.crackLine}>
-                <circleGeometry args={[0.008, 8]} />
-              </mesh>
-            ))}
-          </group>
-        ))}
-      </group>
-    );
-  }
-
-  // concrete-thin: Thin cracked slab with core-drilled holes
-  const slabThick = 0.1;
+function GroundPlane({ width, depth }: { width: number; depth: number }) {
   return (
-    <group>
-      {/* Surrounding ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={FOUNDATION_MATERIALS.grass} receiveShadow>
-        <planeGeometry args={[padW, padD]} />
-      </mesh>
-      {/* Thin concrete slab */}
-      <mesh position={[0, -slabThick / 2, 0]} material={FOUNDATION_MATERIALS.concreteCracked} receiveShadow castShadow>
-        <boxGeometry args={[width + 1.0, slabThick, depth + 1.0]} />
-      </mesh>
-      {/* Simple crack lines embedded in slab top — offset Y above slab to avoid z-fight */}
-      {[
-        { x: -0.6, z: 0, angle: 20, len: 2.0 },
-        { x: 0.4, z: -0.5, angle: 55, len: 1.8 },
-        { x: -0.2, z: 0.6, angle: -30, len: 1.5 },
-      ].map((c, i) => (
-        <mesh key={`crack-${i}`} position={[c.x, 0.006, c.z]} rotation={[-Math.PI / 2, c.angle * Math.PI / 180, 0]} material={FOUNDATION_MATERIALS.crackLine} renderOrder={1}>
-          <planeGeometry args={[0.012, c.len]} />
-        </mesh>
-      ))}
-      {/* Core-drilled holes at each post (600mm diameter) */}
-      {postPositions.map(([x, z], i) => (
-        <group key={`core-${i}`} position={[x, 0, z]}>
-          <mesh position={[0, -0.3, 0]} material={FOUNDATION_MATERIALS.concreteDark}>
-            <cylinderGeometry args={[0.3, 0.3, 0.6, 16]} />
-          </mesh>
-          <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]} material={FOUNDATION_MATERIALS.holeEdge} renderOrder={1}>
-            <ringGeometry args={[0.28, 0.34, 16]} />
-          </mesh>
-        </group>
-      ))}
-    </group>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={MATERIALS.ground} receiveShadow>
+      <planeGeometry args={[width + 4, depth + 4]} />
+    </mesh>
   );
 }
 
@@ -807,7 +613,6 @@ export default function PatioMesh({ config, onPartClick }: { config: PatioConfig
   const beam = useMemo(() => selectBeamForSpan(spanMm), [spanMm]);
   const sheet = useMemo(() => selectSheet(material, colorbondType), [material, colorbondType]);
 
-  // Use PBR materials from centralized library
   const frameFinish = config.frameFinish ?? 'gloss';
   const reflectionStrength = config.reflectionStrength ?? 2.2;
   const frameMat = useMemo(() => createFrameMaterial(frameColor, frameFinish, reflectionStrength), [frameColor, frameFinish, reflectionStrength]);
@@ -852,16 +657,10 @@ export default function PatioMesh({ config, onPartClick }: { config: PatioConfig
 
   return (
     <group>
-      {/* Foundation Base */}
-      <FoundationBase
-        foundationType={config.foundation?.type ?? 'landscape'}
-        width={width}
-        depth={depth}
-        postPositions={posts}
-        colSize={colSize}
-      />
+      {/* Ground Plane */}
+      <GroundPlane width={width} depth={depth} />
 
-      {/* Walls for attached sides — use wall config for sizing */}
+      {/* Walls for attached sides */}
       {!isFreestanding && hasBack && (
         <mesh
           position={[0, mm(walls?.back?.height ?? 2800) / 2, -depth / 2 - mm(walls?.back?.thickness ?? 200) / 2 - mm(walls?.back?.offset ?? 0)]}
@@ -889,7 +688,6 @@ export default function PatioMesh({ config, onPartClick }: { config: PatioConfig
           <boxGeometry args={[mm(walls?.right?.thickness ?? 200), mm(walls?.right?.height ?? 2800), mm(walls?.right?.length ?? depth * 1000)]} />
         </mesh>
       )}
-      {/* Front wall (context only, no structural attachment) */}
       {walls?.front?.enabled && (
         <mesh
           position={[0, mm(walls.front.height) / 2, depth / 2 + mm(walls.front.thickness) / 2 + mm(walls.front.offset)]}

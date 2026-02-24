@@ -4,9 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
-import type { DeckingConfig, DeckingMaterial, RailingStyle, RailingPosition, FoundationType } from "@/types/decking";
+import type { DeckingConfig, DeckingMaterial, RailingStyle, RailingPosition } from "@/types/decking";
 import { DECKING_MATERIALS, DECKING_COLORS } from "@/types/decking";
 
 interface DeckingWizardProps {
@@ -15,13 +14,7 @@ interface DeckingWizardProps {
   onGetQuote: () => void;
 }
 
-const STEPS = ['Material', 'Dimensions', 'Foundation', 'Colour', 'Railings', 'Accessories'];
-
-const FOUNDATION_OPTIONS: { id: FoundationType; name: string; desc: string }[] = [
-  { id: 'landscape', name: 'Landscape / Soil', desc: 'Excavation required for post holes' },
-  { id: 'concrete-thick', name: 'Concrete (≥150mm)', desc: 'Bracket-mount columns with chemset bolts' },
-  { id: 'concrete-thin', name: 'Concrete (<125mm / Cracked)', desc: 'Core drill oversized holes, embed columns 600mm' },
-];
+const STEPS = ['Material', 'Dimensions', 'Colour', 'Railings', 'Accessories'];
 
 export default function DeckingWizard({ config, onChange, onGetQuote }: DeckingWizardProps) {
   const [step, setStep] = useState(0);
@@ -29,20 +22,10 @@ export default function DeckingWizard({ config, onChange, onGetQuote }: DeckingW
   const update = (partial: Partial<DeckingConfig>) =>
     onChange({ ...config, ...partial });
 
-  const updateFoundation = (partial: Partial<DeckingConfig['foundation']>) =>
-    onChange({ ...config, foundation: { ...config.foundation, ...partial } });
-
   const canNext = step < STEPS.length - 1;
   const canPrev = step > 0;
 
   const colors = DECKING_COLORS[config.material];
-
-  // Calculate post/column count for foundation pricing display
-  const boardLen = config.boardDirection === 'lengthwise' ? config.length : config.width;
-  const boardSpanDir = config.boardDirection === 'lengthwise' ? config.width : config.length;
-  const bearerCount = Math.floor(boardSpanDir / 1.8) + 1;
-  const colCountPerBearer = Math.floor(boardLen / 1.8) + 1;
-  const totalColumns = bearerCount * colCountPerBearer;
 
   return (
     <div className="flex flex-col h-full">
@@ -143,109 +126,6 @@ export default function DeckingWizard({ config, onChange, onGetQuote }: DeckingW
 
         {step === 2 && (
           <div className="space-y-4">
-            <h3 className="font-display text-lg font-semibold text-foreground">Foundation / Base</h3>
-            <div className="grid grid-cols-1 gap-2">
-              {FOUNDATION_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => updateFoundation({ type: opt.id })}
-                  className={`p-4 rounded-lg border text-left transition-all ${
-                    config.foundation.type === opt.id
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-card hover:border-primary/40'
-                  }`}
-                >
-                  <span className="font-medium text-foreground">{opt.name}</span>
-                  <p className="text-xs text-muted-foreground mt-1">{opt.desc}</p>
-                </button>
-              ))}
-            </div>
-
-            <Separator />
-
-            <div className="bg-secondary/50 rounded p-3 text-xs text-muted-foreground">
-              Columns/holes: <span className="text-foreground font-medium">{totalColumns}</span>
-            </div>
-
-            {/* Landscape / Soil inputs */}
-            {config.foundation.type === 'landscape' && (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  {totalColumns <= 2
-                    ? `≤ 2 holes → Hand excavation: labourer @ $${config.foundation.labourRate}/hr × 6 hrs`
-                    : `> 2 holes → 1.5T Excavator @ $${config.foundation.excavatorRate}/hr × 8 hrs + 2-way float`}
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Labour $/hr</label>
-                    <Input type="number" value={config.foundation.labourRate} onChange={(e) => updateFoundation({ labourRate: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                  {totalColumns > 2 && (
-                    <>
-                      <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">Excavator $/hr</label>
-                        <Input type="number" value={config.foundation.excavatorRate} onChange={(e) => updateFoundation({ excavatorRate: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">Float (2-way)</label>
-                        <Input type="number" value={config.foundation.floatCharge} onChange={(e) => updateFoundation({ floatCharge: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Concrete thick inputs */}
-            {config.foundation.type === 'concrete-thick' && (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Bracket mount: {totalColumns} brackets + chemset + 6hr min labour
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Bracket $ each</label>
-                    <Input type="number" value={config.foundation.bracketCostEach} onChange={(e) => updateFoundation({ bracketCostEach: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Chemset + bolts $</label>
-                    <Input type="number" value={config.foundation.chemsetCost} onChange={(e) => updateFoundation({ chemsetCost: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Labour $/hr</label>
-                    <Input type="number" value={config.foundation.labourRate} onChange={(e) => updateFoundation({ labourRate: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Concrete thin/cracked inputs */}
-            {config.foundation.type === 'concrete-thin' && (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Core drill {totalColumns} oversized holes @ 600mm deep. Columns extended 600mm for embedment.
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Core drill $ each</label>
-                    <Input type="number" value={config.foundation.coreDrillCostEach} onChange={(e) => updateFoundation({ coreDrillCostEach: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Concrete $/m³</label>
-                    <Input type="number" value={config.foundation.concreteCostPerM3} onChange={(e) => updateFoundation({ concreteCostPerM3: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Labour $/hr</label>
-                    <Input type="number" value={config.foundation.labourRate} onChange={(e) => updateFoundation({ labourRate: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-4">
             <h3 className="font-display text-lg font-semibold text-foreground">Board Colour</h3>
             <div className="grid grid-cols-4 gap-3">
               {colors.map((c) => (
@@ -267,7 +147,7 @@ export default function DeckingWizard({ config, onChange, onGetQuote }: DeckingW
           </div>
         )}
 
-        {step === 4 && (
+        {step === 3 && (
           <div className="space-y-5">
             <h3 className="font-display text-lg font-semibold text-foreground">Railings</h3>
             <div className="space-y-2">
@@ -361,12 +241,12 @@ export default function DeckingWizard({ config, onChange, onGetQuote }: DeckingW
           </div>
         )}
 
-        {step === 5 && (
+        {step === 4 && (
           <div className="space-y-4">
             <h3 className="font-display text-lg font-semibold text-foreground">Accessories</h3>
             {([
               { key: 'lighting' as const, label: 'LED Deck Lighting', desc: 'Recessed step & perimeter lights' },
-              { key: 'seating' as const, label: 'Built-in Seating', desc: 'Integrated bench seating along edge' },
+              { key: 'seating' as const, label: 'Built-in Seating', desc: 'Integrated bench seating' },
             ]).map((acc) => (
               <div key={acc.key} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
                 <div>
@@ -375,7 +255,9 @@ export default function DeckingWizard({ config, onChange, onGetQuote }: DeckingW
                 </div>
                 <Switch
                   checked={config.accessories[acc.key]}
-                  onCheckedChange={(v) => update({ accessories: { ...config.accessories, [acc.key]: v } })}
+                  onCheckedChange={(v) =>
+                    onChange({ ...config, accessories: { ...config.accessories, [acc.key]: v } })
+                  }
                 />
               </div>
             ))}
@@ -384,22 +266,25 @@ export default function DeckingWizard({ config, onChange, onGetQuote }: DeckingW
       </div>
 
       {/* Navigation */}
-      <div className="px-5 py-4 border-t border-border flex gap-2">
-        {canPrev && (
-          <Button variant="outline" onClick={() => setStep(step - 1)} className="flex-1">
-            <ChevronLeft className="w-4 h-4 mr-1" />
+      <div className="px-5 py-3 border-t border-border/60 flex items-center justify-between">
+        {canPrev ? (
+          <button onClick={() => setStep(step - 1)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors">
+            <ChevronLeft className="w-3.5 h-3.5" />
             Back
-          </Button>
+          </button>
+        ) : (
+          <span />
         )}
         {canNext ? (
-          <Button onClick={() => setStep(step + 1)} className="flex-1">
-            Next
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
+          <button onClick={() => setStep(step + 1)} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-all">
+            Continue
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
         ) : (
-          <Button onClick={onGetQuote} className="flex-1">
-            Get Free Quote
-          </Button>
+          <button onClick={onGetQuote} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:brightness-110 transition-all">
+            Get Quote
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
         )}
       </div>
     </div>

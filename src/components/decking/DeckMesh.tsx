@@ -33,7 +33,7 @@ function createBoardMaterial(hex: string) {
   });
 }
 
-function createFrameMaterial() {
+function createDeckFrameMaterial() {
   return new THREE.MeshStandardMaterial({
     color: new THREE.Color('#8b7355'),
     roughness: 0.75,
@@ -45,28 +45,24 @@ export default function DeckMesh({ config }: DeckMeshProps) {
   const { length, width, height, color, boardDirection } = config;
 
   const boardMat = useMemo(() => createBoardMaterial(color), [color]);
-  const frameMat = useMemo(() => createFrameMaterial(), []);
+  const frameMat = useMemo(() => createDeckFrameMaterial(), []);
 
-  // Board direction determines primary/secondary axes
   const boardLen = boardDirection === 'lengthwise' ? length : width;
   const boardSpanDir = boardDirection === 'lengthwise' ? width : length;
 
   const boardCount = Math.floor(boardSpanDir / (BOARD_W + BOARD_GAP));
   const boardGeo = useMemo(() => new THREE.BoxGeometry(boardLen, BOARD_H, BOARD_W), [boardLen]);
 
-  // Joists perpendicular to boards
   const joistLen = boardSpanDir;
   const joistPrimarySpan = boardLen;
   const joistCount = Math.floor(joistPrimarySpan / JOIST_SPACING) + 1;
   const joistGeo = useMemo(() => new THREE.BoxGeometry(JOIST_W, JOIST_H, joistLen), [joistLen]);
 
-  // Bearers perpendicular to joists
   const bearerLen = boardLen;
   const bearerSpan = boardSpanDir;
   const bearerCount = Math.floor(bearerSpan / BEARER_SPACING) + 1;
   const bearerGeo = useMemo(() => new THREE.BoxGeometry(bearerLen, BEARER_H, BEARER_W), [bearerLen]);
 
-  // Posts
   const postGeo = useMemo(() => new THREE.BoxGeometry(POST_SIZE, height - BEARER_H - JOIST_H - BOARD_H, POST_SIZE), [height]);
   const postPositions = useMemo(() => {
     const positions: [number, number, number][] = [];
@@ -123,7 +119,6 @@ export default function DeckMesh({ config }: DeckMeshProps) {
       const sideLen = side === 'front' || side === 'back' ? length : width;
       const postCount = Math.max(Math.ceil(sideLen / 1.5) + 1, 2);
 
-      // Top rail
       let rx = 0, rz = 0;
       if (side === 'front') rz = width / 2;
       else if (side === 'back') rz = -width / 2;
@@ -136,7 +131,6 @@ export default function DeckMesh({ config }: DeckMeshProps) {
         size: horizontal ? [sideLen, RAIL_W, RAIL_W] : [RAIL_W, RAIL_W, sideLen],
       });
 
-      // Posts
       for (let p = 0; p < postCount; p++) {
         const t = postCount === 1 ? 0 : p / (postCount - 1);
         const offset = -sideLen / 2 + t * sideLen;
@@ -149,7 +143,6 @@ export default function DeckMesh({ config }: DeckMeshProps) {
         });
       }
 
-      // Infill: wire = horizontal lines, timber = vertical balusters, glass = panel
       if (config.railingStyle === 'wire') {
         for (let w = 1; w <= 4; w++) {
           const wy = deckTopY + (RAIL_H * w) / 5;
@@ -211,81 +204,14 @@ export default function DeckMesh({ config }: DeckMeshProps) {
     metalness: 0.6,
   }), []);
 
-  // Foundation materials
-  const foundationType = config.foundation?.type ?? 'landscape';
   const grassMat = useMemo(() => new THREE.MeshStandardMaterial({ color: new THREE.Color('#4a6b35'), roughness: 0.85 }), []);
-  const soilMat = useMemo(() => new THREE.MeshStandardMaterial({ color: new THREE.Color('#5a4a3a'), roughness: 0.95 }), []);
-  const soilDarkMat = useMemo(() => new THREE.MeshStandardMaterial({ color: new THREE.Color('#3d3028'), roughness: 0.9 }), []);
-  const concreteMat = useMemo(() => new THREE.MeshStandardMaterial({ color: new THREE.Color('#b0aca6'), roughness: 0.75, metalness: 0.05 }), []);
-  const crackedMat = useMemo(() => new THREE.MeshStandardMaterial({ color: new THREE.Color('#a09a92'), roughness: 0.8 }), []);
-  const crackLineMat = useMemo(() => new THREE.MeshStandardMaterial({ color: new THREE.Color('#6b6560'), roughness: 0.9 }), []);
-  const holeEdgeMat = useMemo(() => new THREE.MeshStandardMaterial({ color: new THREE.Color('#7a7570'), roughness: 0.7 }), []);
 
   return (
     <group>
-      {/* Foundation base */}
-      {foundationType === 'landscape' && (
-        <group>
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={grassMat} receiveShadow>
-            <planeGeometry args={[length + 4, width + 4]} />
-          </mesh>
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.005, 0]} material={soilMat} receiveShadow>
-            <planeGeometry args={[length + 0.6, width + 0.6]} />
-          </mesh>
-          {postPositions.map(([x, _, z], i) => (
-            <group key={`fh-${i}`} position={[x, 0, z]}>
-              <mesh position={[0, -0.3, 0]} material={soilDarkMat}>
-                <boxGeometry args={[0.6, 0.6, 0.6]} />
-              </mesh>
-            </group>
-          ))}
-        </group>
-      )}
-      {foundationType === 'concrete-thick' && (
-        <group>
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={grassMat} receiveShadow>
-            <planeGeometry args={[length + 4, width + 4]} />
-          </mesh>
-          <mesh position={[0, -0.075, 0]} material={concreteMat} receiveShadow castShadow>
-            <boxGeometry args={[length + 1, 0.15, width + 1]} />
-          </mesh>
-          {postPositions.map(([x, _, z], i) => (
-            <mesh key={`bp-${i}`} position={[x, 0.002, z]} rotation={[-Math.PI / 2, 0, 0]} material={holeEdgeMat}>
-              <planeGeometry args={[POST_SIZE + 0.04, POST_SIZE + 0.04]} />
-            </mesh>
-          ))}
-        </group>
-      )}
-      {foundationType === 'concrete-thin' && (
-        <group>
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={grassMat} receiveShadow>
-            <planeGeometry args={[length + 4, width + 4]} />
-          </mesh>
-          <mesh position={[0, -0.05, 0]} material={crackedMat} receiveShadow castShadow>
-            <boxGeometry args={[length + 1, 0.1, width + 1]} />
-          </mesh>
-          {Array.from({ length: 5 }).map((_, i) => {
-            const angle = (i * 37 + 15) * (Math.PI / 180);
-            const cx = (i - 2) * 0.8;
-            const cz = (i % 2 === 0 ? 0.3 : -0.4) * (i - 2);
-            return (
-              <mesh key={`crack-${i}`} position={[cx, 0.002, cz]} rotation={[-Math.PI / 2, angle, 0]} material={crackLineMat}>
-                <planeGeometry args={[0.008, 1.5 + i * 0.3]} />
-              </mesh>
-            );
-          })}
-          {postPositions.map(([x, _, z], i) => (
-            <group key={`core-${i}`} position={[x, 0, z]}>
-              <mesh position={[0, -0.3, 0]} material={soilDarkMat}>
-                <cylinderGeometry args={[0.3, 0.3, 0.6, 16]} />
-              </mesh>
-              <mesh position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} material={holeEdgeMat}>
-                <ringGeometry args={[0.28, 0.34, 16]} />
-              </mesh>
-            </group>
-          ))}
-        </group>
-      )}
+      {/* Simple ground plane */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={grassMat} receiveShadow>
+        <planeGeometry args={[length + 4, width + 4]} />
+      </mesh>
 
       {/* Deck boards */}
       {Array.from({ length: boardCount }).map((_, i) => {

@@ -10,14 +10,14 @@ import type { PatioConfig, WallSide } from "@/types/configurator";
 import type { QualityLevel } from "@/lib/materials";
 import { calculateEstimate } from "@/components/configurator/QuotePanel";
 
-const STEPS = ['Material', 'Style', 'Dimensions', 'Foundation', 'Colour', 'Walls', 'Accessories'];
+const STEPS = ['Material', 'Style', 'Dimensions', 'Colour', 'Walls', 'Accessories'];
 
 const PART_TO_STEP: Record<string, number> = {
   columns: 2,
   beams: 2,
   roof: 0,
-  walls: 5,
-  accessories: 6,
+  walls: 4,
+  accessories: 5,
 };
 
 export default function PatioConfigurator() {
@@ -129,7 +129,7 @@ export default function PatioConfigurator() {
               onPartClick={handlePartClick}
               quality={quality}
               onQualityChange={setQuality}
-              wallEditMode={wizardStep === 5}
+              wallEditMode={wizardStep === 4}
               selectedWall={selectedWall}
               onSelectWall={setSelectedWall}
               onConfigChange={setConfig}
