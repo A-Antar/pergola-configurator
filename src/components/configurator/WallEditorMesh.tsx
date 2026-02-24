@@ -27,6 +27,7 @@ function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offset
 }) {
   const [hovered, setHovered] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [activated, setActivated] = useState<'start' | 'end' | null>(null);
   const dragStart = useRef<THREE.Vector3 | null>(null);
   const { camera, raycaster, gl } = useThree();
   const plane = useRef(new THREE.Plane());
@@ -62,16 +63,21 @@ function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offset
     return [[end[0] - tickSize, end[1], end[2]], [end[0] + tickSize, end[1], end[2]]];
   }, [end, axis]);
 
-  const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
-    e.stopPropagation();
+  const startDragFromPoint = useCallback((pt: THREE.Vector3) => {
     setDragging(true);
-    const pt = new THREE.Vector3(...end);
     dragStart.current = pt.clone();
     const normal = new THREE.Vector3(0, 1, 0);
     if (axis === 'y') normal.set(0, 0, 1);
     plane.current.setFromNormalAndCoplanarPoint(normal, pt);
     (gl.domElement as HTMLElement).style.cursor = 'grabbing';
-  }, [end, axis, gl]);
+  }, [axis, gl]);
+
+  const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>, which: 'start' | 'end') => {
+    if (activated !== which) return; // must be double-click activated first
+    e.stopPropagation();
+    const pt = new THREE.Vector3(...(which === 'end' ? end : start));
+    startDragFromPoint(pt);
+  }, [activated, end, start, startDragFromPoint]);
 
   const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
     if (!dragging || !dragStart.current) return;
@@ -106,11 +112,20 @@ function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offset
   const handlePointerUp = useCallback(() => {
     setDragging(false);
     dragStart.current = null;
-    (gl.domElement as HTMLElement).style.cursor = '';
-  }, [gl]);
+    (gl.domElement as HTMLElement).style.cursor = activated ? 'grab' : '';
+  }, [gl, activated]);
 
-  const activeColor = dragging ? '#22c55e' : hovered ? '#16a34a' : color;
-  const lineOpacity = dragging ? 1.0 : hovered ? 0.9 : 0.6;
+  const handleDoubleClick = useCallback((which: 'start' | 'end') => {
+    setActivated(prev => prev === which ? null : which);
+  }, []);
+
+  // Deactivate on click away (pointerMissed)
+  const handlePointerMissed = useCallback(() => {
+    setActivated(null);
+  }, []);
+
+  const activeColor = dragging ? '#22c55e' : activated ? '#f59e0b' : hovered ? '#16a34a' : color;
+  const lineOpacity = dragging ? 1.0 : activated ? 0.95 : hovered ? 0.9 : 0.6;
 
   return (
     <group ref={groupRef}>
@@ -154,17 +169,18 @@ function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offset
       {/* Drag handle at end — arrow tip */}
       <mesh
         position={end}
-        onPointerEnter={() => { setHovered(true); (gl.domElement as HTMLElement).style.cursor = 'grab'; }}
+        onPointerEnter={() => { setHovered(true); (gl.domElement as HTMLElement).style.cursor = activated === 'end' ? 'grab' : 'pointer'; }}
         onPointerLeave={() => { setHovered(false); if (!dragging) (gl.domElement as HTMLElement).style.cursor = ''; }}
-        onPointerDown={handlePointerDown}
+        onDoubleClick={(e) => { e.stopPropagation(); handleDoubleClick('end'); }}
+        onPointerDown={(e) => handlePointerDown(e, 'end')}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
         <coneGeometry args={[0.06, 0.15, 8]} />
         <meshPhysicalMaterial
-          color={dragging ? '#f59e0b' : hovered ? '#22c55e' : '#555555'}
-          emissive={dragging ? '#f59e0b' : hovered ? '#22c55e' : '#555555'}
-          emissiveIntensity={dragging ? 0.6 : hovered ? 0.4 : 0.1}
+          color={activated === 'end' ? '#f59e0b' : dragging ? '#f59e0b' : hovered ? '#22c55e' : '#555555'}
+          emissive={activated === 'end' ? '#f59e0b' : dragging ? '#f59e0b' : hovered ? '#22c55e' : '#555555'}
+          emissiveIntensity={activated === 'end' ? 0.6 : dragging ? 0.6 : hovered ? 0.4 : 0.1}
           roughness={0.4}
         />
       </mesh>
@@ -172,26 +188,18 @@ function DraggableDimension({ start, end, label, sideLabel, axis, onDrag, offset
       {/* Drag handle at start — arrow tip */}
       <mesh
         position={start}
-        onPointerEnter={() => { setHovered(true); (gl.domElement as HTMLElement).style.cursor = 'grab'; }}
+        onPointerEnter={() => { setHovered(true); (gl.domElement as HTMLElement).style.cursor = activated === 'start' ? 'grab' : 'pointer'; }}
         onPointerLeave={() => { setHovered(false); if (!dragging) (gl.domElement as HTMLElement).style.cursor = ''; }}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          setDragging(true);
-          const pt = new THREE.Vector3(...start);
-          dragStart.current = pt.clone();
-          const normal = new THREE.Vector3(0, 1, 0);
-          if (axis === 'y') normal.set(0, 0, 1);
-          plane.current.setFromNormalAndCoplanarPoint(normal, pt);
-          (gl.domElement as HTMLElement).style.cursor = 'grabbing';
-        }}
+        onDoubleClick={(e) => { e.stopPropagation(); handleDoubleClick('start'); }}
+        onPointerDown={(e) => handlePointerDown(e, 'start')}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
         <coneGeometry args={[0.06, 0.15, 8]} />
         <meshPhysicalMaterial
-          color={dragging ? '#f59e0b' : hovered ? '#22c55e' : '#555555'}
-          emissive={dragging ? '#f59e0b' : hovered ? '#22c55e' : '#555555'}
-          emissiveIntensity={dragging ? 0.6 : hovered ? 0.4 : 0.1}
+          color={activated === 'start' ? '#f59e0b' : dragging ? '#f59e0b' : hovered ? '#22c55e' : '#555555'}
+          emissive={activated === 'start' ? '#f59e0b' : dragging ? '#f59e0b' : hovered ? '#22c55e' : '#555555'}
+          emissiveIntensity={activated === 'start' ? 0.6 : dragging ? 0.6 : hovered ? 0.4 : 0.1}
           roughness={0.4}
         />
       </mesh>
