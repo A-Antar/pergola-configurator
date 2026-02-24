@@ -4,11 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
-import type { PatioConfig, AttachmentSide, WallSide, FrameFinish, HdriPreset, FoundationConfig } from "@/types/configurator";
+import type { PatioConfig, AttachmentSide, WallSide, FrameFinish, HdriPreset } from "@/types/configurator";
 import { FRAME_COLORS } from "@/types/configurator";
-import type { FoundationType } from "@/types/decking";
 import WallEditorPanel from "./WallEditorPanel";
 
 interface ConfigWizardProps {
@@ -21,13 +19,7 @@ interface ConfigWizardProps {
   onSelectWall?: (side: WallSide | null) => void;
 }
 
-const STEPS = ['Material', 'Style', 'Dimensions', 'Foundation', 'Colour', 'Walls', 'Accessories'];
-
-const FOUNDATION_OPTIONS: { id: FoundationType; name: string; desc: string }[] = [
-  { id: 'landscape', name: 'Landscape / Soil', desc: 'Excavation required for post holes' },
-  { id: 'concrete-thick', name: 'Concrete (≥150mm)', desc: 'Bracket-mount columns with chemset bolts' },
-  { id: 'concrete-thin', name: 'Concrete (<125mm / Cracked)', desc: 'Core drill oversized holes, embed columns 600mm' },
-];
+const STEPS = ['Material', 'Style', 'Dimensions', 'Colour', 'Walls', 'Accessories'];
 
 export default function ConfigWizard({ config, onChange, onGetQuote, activeStep, onStepChange, selectedWall, onSelectWall }: ConfigWizardProps) {
   const [internalStep, setInternalStep] = useState(0);
@@ -40,16 +32,8 @@ export default function ConfigWizard({ config, onChange, onGetQuote, activeStep,
   const updateAccessory = (key: keyof PatioConfig['accessories'], val: boolean) =>
     onChange({ ...config, accessories: { ...config.accessories, [key]: val } });
 
-  const updateFoundation = (partial: Partial<PatioConfig['foundation']>) =>
-    onChange({ ...config, foundation: { ...config.foundation, ...partial } });
-
   const canNext = step < STEPS.length - 1;
   const canPrev = step > 0;
-
-  // Column count for foundation (posts at ~1.8m spacing both directions)
-  const colsAcross = Math.floor(config.width / 1.8) + 1;
-  const colsDeep = Math.floor(config.depth / 1.8) + 1;
-  const totalColumns = colsAcross * colsDeep;
 
   return (
     <div className="flex flex-col h-full">
@@ -144,7 +128,7 @@ export default function ConfigWizard({ config, onChange, onGetQuote, activeStep,
             {config.style !== 'free-standing' && (
               <div className="bg-muted/50 rounded-lg p-3 mt-2">
                 <p className="text-xs text-muted-foreground">
-                  Configure wall attachments in the <button onClick={() => setStep(5)} className="text-primary font-medium hover:underline">Walls</button> step.
+                  Configure wall attachments in the <button onClick={() => setStep(4)} className="text-primary font-medium hover:underline">Walls</button> step.
                 </p>
               </div>
             )}
@@ -182,104 +166,6 @@ export default function ConfigWizard({ config, onChange, onGetQuote, activeStep,
         )}
 
         {step === 3 && (
-          <div className="space-y-4">
-            <h3 className="font-display text-lg font-semibold text-foreground">Foundation / Base</h3>
-            <div className="grid grid-cols-1 gap-2">
-              {FOUNDATION_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => updateFoundation({ type: opt.id })}
-                  className={`p-4 rounded-lg border text-left transition-all ${
-                    config.foundation.type === opt.id
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-card hover:border-primary/40'
-                  }`}
-                >
-                  <span className="font-medium text-foreground">{opt.name}</span>
-                  <p className="text-xs text-muted-foreground mt-1">{opt.desc}</p>
-                </button>
-              ))}
-            </div>
-            <Separator />
-            <div className="bg-secondary/50 rounded p-3 text-xs text-muted-foreground">
-              Columns/holes: <span className="text-foreground font-medium">{totalColumns}</span>
-            </div>
-
-            {config.foundation.type === 'landscape' && (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  {totalColumns <= 2
-                    ? `≤ 2 holes → Hand excavation: labourer @ $${config.foundation.labourRate}/hr × 6 hrs`
-                    : `> 2 holes → 1.5T Excavator @ $${config.foundation.excavatorRate}/hr × 8 hrs + 2-way float`}
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Labour $/hr</label>
-                    <Input type="number" value={config.foundation.labourRate} onChange={(e) => updateFoundation({ labourRate: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                  {totalColumns > 2 && (
-                    <>
-                      <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">Excavator $/hr</label>
-                        <Input type="number" value={config.foundation.excavatorRate} onChange={(e) => updateFoundation({ excavatorRate: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">Float (2-way)</label>
-                        <Input type="number" value={config.foundation.floatCharge} onChange={(e) => updateFoundation({ floatCharge: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {config.foundation.type === 'concrete-thick' && (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Bracket mount: {totalColumns} brackets + chemset + 6hr min labour
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Bracket $ each</label>
-                    <Input type="number" value={config.foundation.bracketCostEach} onChange={(e) => updateFoundation({ bracketCostEach: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Chemset + bolts $</label>
-                    <Input type="number" value={config.foundation.chemsetCost} onChange={(e) => updateFoundation({ chemsetCost: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Labour $/hr</label>
-                    <Input type="number" value={config.foundation.labourRate} onChange={(e) => updateFoundation({ labourRate: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {config.foundation.type === 'concrete-thin' && (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Core drill {totalColumns} oversized holes @ 600mm deep. Columns extended 600mm for embedment.
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Core drill $ each</label>
-                    <Input type="number" value={config.foundation.coreDrillCostEach} onChange={(e) => updateFoundation({ coreDrillCostEach: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Concrete $/m³</label>
-                    <Input type="number" value={config.foundation.concreteCostPerM3} onChange={(e) => updateFoundation({ concreteCostPerM3: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Labour $/hr</label>
-                    <Input type="number" value={config.foundation.labourRate} onChange={(e) => updateFoundation({ labourRate: Number(e.target.value) || 0 })} className="h-8 text-sm" />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {step === 4 && (
           <div className="space-y-4">
             <h3 className="font-display text-lg font-semibold text-foreground">Frame Colour</h3>
             <div className="grid grid-cols-4 gap-3">
@@ -364,7 +250,7 @@ export default function ConfigWizard({ config, onChange, onGetQuote, activeStep,
           </div>
         )}
 
-        {step === 5 && (
+        {step === 4 && (
           <WallEditorPanel
             config={config}
             onChange={onChange}
@@ -373,7 +259,7 @@ export default function ConfigWizard({ config, onChange, onGetQuote, activeStep,
           />
         )}
 
-        {step === 6 && (
+        {step === 5 && (
           <div className="space-y-4">
             <h3 className="font-display text-lg font-semibold text-foreground">Accessories</h3>
             {([

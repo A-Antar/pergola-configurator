@@ -9,7 +9,7 @@ interface QuotePdfOptions {
   customerEmail: string;
   customerPhone: string;
   suburb: string;
-  canvasDataUrl?: string; // screenshot from the 3D canvas
+  canvasDataUrl?: string;
   quoteRef?: string;
 }
 
@@ -27,11 +27,11 @@ export function generateQuotePdf(opts: QuotePdfOptions): jsPDF {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
-  const mx = 18; // margin x
+  const mx = 18;
   let y = 0;
 
-  // ── Brand header bar ─────────────────────────────────
-  doc.setFillColor(35, 120, 65); // primary green
+  // ── Brand header bar
+  doc.setFillColor(35, 120, 65);
   doc.rect(0, 0, pw, 28, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
@@ -43,19 +43,18 @@ export function generateQuotePdf(opts: QuotePdfOptions): jsPDF {
   doc.text("Prepared for you by H2 Patios", pw - mx, 22, { align: "right" });
   y = 36;
 
-  // ── 3D Render Image ──────────────────────────────────
+  // ── 3D Render Image
   if (canvasDataUrl) {
     const imgW = pw - mx * 2;
-    const imgH = imgW * 0.5; // ~16:8 aspect
+    const imgH = imgW * 0.5;
     doc.addImage(canvasDataUrl, "PNG", mx, y, imgW, imgH);
-    // subtle border
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.3);
     doc.roundedRect(mx, y, imgW, imgH, 2, 2);
     y += imgH + 8;
   }
 
-  // ── Customer Details ─────────────────────────────────
+  // ── Customer Details
   doc.setFillColor(245, 245, 243);
   doc.roundedRect(mx, y, pw - mx * 2, 22, 2, 2, "F");
   doc.setTextColor(60, 60, 60);
@@ -68,7 +67,7 @@ export function generateQuotePdf(opts: QuotePdfOptions): jsPDF {
   doc.text(suburb, mx + 4, y + 21);
   y += 30;
 
-  // ── Design Summary ───────────────────────────────────
+  // ── Design Summary
   const sectionTitle = (title: string) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
@@ -102,9 +101,7 @@ export function generateQuotePdf(opts: QuotePdfOptions): jsPDF {
   row("Height", `${config.height.toFixed(1)}m`);
   row("Frame Colour", getColorName(config.frameColor));
   row("Finish", config.frameFinish.charAt(0).toUpperCase() + config.frameFinish.slice(1));
-  row("Foundation", config.foundation.type.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()));
 
-  // Accessories
   const activeAccessories = Object.entries(config.accessories)
     .filter(([, v]) => v)
     .map(([k]) => k.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()));
@@ -113,7 +110,7 @@ export function generateQuotePdf(opts: QuotePdfOptions): jsPDF {
   }
   y += 4;
 
-  // ── Price Breakdown ──────────────────────────────────
+  // ── Price Breakdown
   sectionTitle("PRICE BREAKDOWN");
 
   breakdown.forEach((item) => {
@@ -144,7 +141,7 @@ export function generateQuotePdf(opts: QuotePdfOptions): jsPDF {
   doc.text(`$${min.toLocaleString()} – $${max.toLocaleString()}`, pw - mx - 6, y + 12, { align: "right" });
   y += 24;
 
-  // ── Terms & Conditions ───────────────────────────────
+  // ── Terms & Conditions
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(140, 140, 140);
@@ -159,7 +156,7 @@ export function generateQuotePdf(opts: QuotePdfOptions): jsPDF {
     y += 4;
   });
 
-  // ── Footer ───────────────────────────────────────────
+  // ── Footer
   doc.setFillColor(245, 245, 243);
   doc.rect(0, ph - 14, pw, 14, "F");
   doc.setFontSize(7);
