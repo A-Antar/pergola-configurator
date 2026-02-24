@@ -236,8 +236,8 @@ export default function PatioScene({
           <DebugOverlay parts={debugParts} showLabels={showDebugLabels} showBoundingBoxes />
         )}
 
-        {/* Wall Editor overlay */}
-        {(wallEditMode || showDims !== 'off') && onConfigChange && (
+        {/* Dimensions & Wall Editor — always visible for draggable dimensions */}
+        {onConfigChange && (
           <WallEditorMesh
             config={config}
             onChange={onConfigChange}
