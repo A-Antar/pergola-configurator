@@ -16,10 +16,26 @@ import {
   createRoofMaterial,
   MATERIALS,
 } from "@/lib/materials";
+import { buildExtrudedProfile, getProfileDimensions } from "@/lib/profile-geometry";
 
 /* ── helpers ────────────────────────────────────────────────── */
 
 const mm = (v: number) => v / 1000;
+
+/* ── Extruded Beam component ──────────────────────────────── */
+
+function ExtrudedBeam({ profileId, length, position, rotation, material }: {
+  profileId: string;
+  length: number;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  material: THREE.Material;
+}) {
+  const geometry = useMemo(() => buildExtrudedProfile(profileId, length), [profileId, length]);
+  return (
+    <mesh geometry={geometry} position={position} rotation={rotation} material={material} castShadow />
+  );
+}
 
 /* ── component sub-builders (one per build-order stage) ───── */
 
@@ -49,11 +65,9 @@ function TekScrew({ position, rotation, material }: {
 }) {
   return (
     <group position={position} rotation={rotation}>
-      {/* Screw head — hex washer head */}
       <mesh material={material}>
         <cylinderGeometry args={[0.006, 0.006, 0.004, 6]} />
       </mesh>
-      {/* Shaft */}
       <mesh position={[0, -0.006, 0]} material={material}>
         <cylinderGeometry args={[0.003, 0.003, 0.012, 6]} />
       </mesh>
@@ -114,16 +128,25 @@ function Columns({ positions, height, colSize, frameMat, decorative, beamH, beam
   const capH = mm(BRACKETS.postCap.height);
   const gap = 0.003;
   const postH = height - capH - gap;
+  const profileId = colSize >= 140 ? 'column-140' : 'column-100';
+
   return (
     <>
       {positions.map(([x, z], i) => (
         <group key={`col-${i}`}>
-          <mesh position={[x, postH / 2, z]} material={frameMat} castShadow>
-            <boxGeometry args={[s, postH, s]} />
-          </mesh>
+          {/* Column post — using extruded profile rotated to stand vertically */}
+          <ExtrudedBeam
+            profileId={profileId}
+            length={postH}
+            position={[x, postH / 2, z]}
+            rotation={[Math.PI / 2, 0, 0]}
+            material={frameMat}
+          />
+          {/* Post cap */}
           <mesh position={[x, postH + gap + capH / 2, z]} material={MATERIALS.postCap}>
             <boxGeometry args={[s + 0.012, capH, s + 0.012]} />
           </mesh>
+          {/* Post bracket */}
           <PostBracket
             position={[x, height - beamH, z]}
             colSize={colSize}
@@ -217,22 +240,44 @@ function Beams({ config, beam, patioType, frameMat }: {
   const beamY = height - bH / 2;
   const overhang = patioType.hasOverhang ? mm(patioType.overhangDistance) : 0;
   const gap = 0.006;
+  const profileId = beam.profileHeight >= 150 ? 'probeam-150' : 'probeam-120';
 
   return (
     <>
-      <mesh position={[0, beamY, -depth / 2]} material={frameMat} castShadow>
-        <boxGeometry args={[width - bW - gap * 2, bH, bW]} />
-      </mesh>
-      <mesh position={[-width / 2, beamY, overhang / 2]} material={frameMat} castShadow>
-        <boxGeometry args={[bW, bH, depth + overhang]} />
-      </mesh>
-      <mesh position={[width / 2, beamY, overhang / 2]} material={frameMat} castShadow>
-        <boxGeometry args={[bW, bH, depth + overhang]} />
-      </mesh>
-      <mesh position={[0, beamY, depth / 2 + overhang]} material={frameMat} castShadow>
-        <boxGeometry args={[width - bW - gap * 2, bH, bW]} />
-      </mesh>
+      {/* Back beam — runs along X axis */}
+      <ExtrudedBeam
+        profileId={profileId}
+        length={width - bW - gap * 2}
+        position={[0, beamY, -depth / 2]}
+        rotation={[0, Math.PI / 2, 0]}
+        material={frameMat}
+      />
+      {/* Left side beam — runs along Z axis */}
+      <ExtrudedBeam
+        profileId={profileId}
+        length={depth + overhang}
+        position={[-width / 2, beamY, overhang / 2]}
+        rotation={[0, 0, 0]}
+        material={frameMat}
+      />
+      {/* Right side beam — runs along Z axis */}
+      <ExtrudedBeam
+        profileId={profileId}
+        length={depth + overhang}
+        position={[width / 2, beamY, overhang / 2]}
+        rotation={[0, 0, 0]}
+        material={frameMat}
+      />
+      {/* Front beam — runs along X axis */}
+      <ExtrudedBeam
+        profileId={profileId}
+        length={width - bW - gap * 2}
+        position={[0, beamY, depth / 2 + overhang]}
+        rotation={[0, Math.PI / 2, 0]}
+        material={frameMat}
+      />
 
+      {/* Flute lines on front beam face */}
       {beam.fluted && (
         <>
           {[0.25, 0.5, 0.75].map((t, fi) => (
@@ -246,6 +291,7 @@ function Beams({ config, beam, patioType, frameMat }: {
         </>
       )}
 
+      {/* Beam-to-beam brackets at corners */}
       <BeamToBeamBracket position={[-width / 2 + bW / 2 + 0.002, beamY, -depth / 2]} rotation={[0, 0, 0]} beamH={bH} beamW={bW} />
       <BeamToBeamBracket position={[width / 2 - bW / 2 - 0.002, beamY, -depth / 2]} rotation={[0, Math.PI, 0]} beamH={bH} beamW={bW} />
       <BeamToBeamBracket position={[-width / 2 + bW / 2 + 0.002, beamY, depth / 2 + overhang]} rotation={[0, 0, 0]} beamH={bH} beamW={bW} />
@@ -268,9 +314,14 @@ function Purlins({ config, beam, patioType, frameMat }: {
 
   if (patioType.hasMidPurlin) {
     purlins.push(
-      <mesh key="mid-purlin" position={[0, purlinY, 0]} material={frameMat} castShadow>
-        <boxGeometry args={[purlinW, purlinH, depth + 0.05]} />
-      </mesh>
+      <ExtrudedBeam
+        key="mid-purlin"
+        profileId="purlin"
+        length={depth + 0.05}
+        position={[0, purlinY, 0]}
+        rotation={[0, 0, 0]}
+        material={frameMat}
+      />
     );
   }
 
@@ -279,9 +330,14 @@ function Purlins({ config, beam, patioType, frameMat }: {
   for (let i = 0; i <= count; i++) {
     const z = -depth / 2 + (depth / count) * i;
     purlins.push(
-      <mesh key={`purlin-${i}`} position={[0, purlinY, z]} material={frameMat} castShadow>
-        <boxGeometry args={[width - 0.02, purlinH, purlinW]} />
-      </mesh>
+      <ExtrudedBeam
+        key={`purlin-${i}`}
+        profileId="purlin"
+        length={width - 0.02}
+        position={[0, purlinY, z]}
+        rotation={[0, Math.PI / 2, 0]}
+        material={frameMat}
+      />
     );
   }
 
@@ -433,23 +489,18 @@ function GableRoof({ width, depth, roofY, gableHeight, sheetThick, roofMat, fram
 
   return (
     <group>
-      {/* Left slope */}
       <mesh position={[-halfW / 2, roofY + gableHeight / 2, 0]} rotation={[0, 0, slopeAngle]} material={roofMat} castShadow>
         <boxGeometry args={[slopeLen, sheetThick, depth]} />
       </mesh>
-      {/* Right slope */}
       <mesh position={[halfW / 2, roofY + gableHeight / 2, 0]} rotation={[0, 0, -slopeAngle]} material={roofMat} castShadow>
         <boxGeometry args={[slopeLen, sheetThick, depth]} />
       </mesh>
-      {/* Ridge cap */}
       <mesh position={[0, roofY + gableHeight + 0.01, 0]} material={frameMat}>
         <boxGeometry args={[0.08, 0.03, depth + 0.1]} />
       </mesh>
-      {/* Front infill */}
       <mesh position={[0, roofY + gableHeight / 2, depth / 2]} material={frameMat}>
         <primitive object={createTriangleGeo(width, gableHeight)} />
       </mesh>
-      {/* Back infill */}
       <mesh position={[0, roofY + gableHeight / 2, -depth / 2]} rotation={[0, Math.PI, 0]} material={frameMat}>
         <primitive object={createTriangleGeo(width, gableHeight)} />
       </mesh>
@@ -472,15 +523,22 @@ function GuttersAndDownpipes({ config, beam, patioType, frameMat }: {
 
   return (
     <>
-      <mesh position={[0, gutterY, frontZ + gutterW / 2]} material={frameMat} castShadow>
-        <boxGeometry args={[width + 0.15, gutterH, gutterW]} />
-      </mesh>
+      {/* Gutter — using extruded gutter profile */}
+      <ExtrudedBeam
+        profileId="gutter-outback"
+        length={width + 0.15}
+        position={[0, gutterY, frontZ + gutterW / 2]}
+        rotation={[0, Math.PI / 2, 0]}
+        material={frameMat}
+      />
+      {/* Downpipes */}
       <mesh position={[width / 2 - 0.15, (gutterY) / 2, frontZ + gutterW]} castShadow material={frameMat}>
         <cylinderGeometry args={[dpR, dpR, gutterY, 12]} />
       </mesh>
       <mesh position={[-width / 2 + 0.15, (gutterY) / 2, frontZ + gutterW]} castShadow material={frameMat}>
         <cylinderGeometry args={[dpR, dpR, gutterY, 12]} />
       </mesh>
+      {/* Downpipe straps */}
       {[width / 2 - 0.15, -width / 2 + 0.15].map((x, si) => (
         [0.3, 0.6, 0.85].map((t, di) => (
           <mesh key={`strap-${si}-${di}`} position={[x, gutterY * t, frontZ + gutterW]} material={MATERIALS.bracket}>

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Lock } from "lucide-react";
+import { ArrowRight, Lock, Phone } from "lucide-react";
+import { BRAND } from "@/lib/brand-config";
 
 const PRODUCTS = [
   {
@@ -49,14 +50,15 @@ const Index = () => {
       <header className="border-b border-border px-6 py-4 flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-primary tracking-tight">
-            H2 Patios
+            {BRAND.name}
           </h1>
-          <p className="text-xs text-muted-foreground">3D Configurator</p>
+          <p className="text-xs text-muted-foreground">{BRAND.tagline}</p>
         </div>
         <a
-          href="tel:1300000000"
-          className="text-sm text-muted-foreground hover:text-primary transition-colors"
+          href={`tel:${BRAND.phone.replace(/\s/g, '')}`}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
         >
+          <Phone className="w-3.5 h-3.5" />
           Call for a free quote
         </a>
       </header>
@@ -108,7 +110,7 @@ const Index = () => {
         </div>
 
         <p className="mt-12 text-xs text-muted-foreground text-center max-w-md">
-          Estimated prices exclude GST. Final quote confirmed after a free on-site measure by the H2 Patios team.
+          Estimated prices exclude GST. Final quote confirmed after a free on-site measure by the {BRAND.name} team.
         </p>
       </div>
     </div>

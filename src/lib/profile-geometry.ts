@@ -1,9 +1,9 @@
 /**
  * Profile-based geometry helpers.
- * Converts 2D mm profiles into THREE.js ExtrudeGeometry.
+ * Converts 2D mm profiles into THREE.js ExtrudeGeometry with caching.
  *
  * Usage:
- *   const geo = buildExtrudedProfile('probeam-150', 5.0); // 5m long beam
+ *   const geo = buildExtrudedProfile('probeam-150', 5.0);
  *   <mesh geometry={geo} material={frameMat} />
  */
 
@@ -13,6 +13,13 @@ import { PROFILES, type Profile2D } from '@/data/profiles/beam-profiles';
 /** mm → metres */
 const mm = (v: number) => v / 1000;
 
+// ─── Geometry Cache ────────────────────────────────────────
+const geoCache = new Map<string, THREE.BufferGeometry>();
+
+function getCacheKey(profileId: string, length: number): string {
+  return `${profileId}:${length.toFixed(4)}`;
+}
+
 /**
  * Build a THREE.ExtrudeGeometry from a named profile.
  * The extrusion runs along the Z axis (length).
@@ -20,20 +27,28 @@ const mm = (v: number) => v / 1000;
  *
  * @param profileId - key in PROFILES map
  * @param lengthMetres - extrusion length in metres
- * @returns THREE.ExtrudeGeometry centered at origin
+ * @returns THREE.ExtrudeGeometry centered at origin (cached)
  */
 export function buildExtrudedProfile(profileId: string, lengthMetres: number): THREE.BufferGeometry {
+  const key = getCacheKey(profileId, lengthMetres);
+  if (geoCache.has(key)) return geoCache.get(key)!;
+
   const profile = PROFILES[profileId];
   if (!profile) {
     console.warn(`Profile "${profileId}" not found, falling back to box`);
-    return new THREE.BoxGeometry(0.15, 0.15, lengthMetres);
+    const box = new THREE.BoxGeometry(0.15, 0.15, lengthMetres);
+    geoCache.set(key, box);
+    return box;
   }
 
-  return extrudeFromPoints(profile.points, lengthMetres);
+  const geo = extrudeFromPoints(profile.points, lengthMetres);
+  geoCache.set(key, geo);
+  return geo;
 }
 
 /**
  * Build extrusion from raw 2D points (mm) and length (metres).
+ * Profile cross-section is in XY plane, extrusion along Z.
  */
 export function extrudeFromPoints(pointsMm: [number, number][], lengthMetres: number): THREE.ExtrudeGeometry {
   // Find bounding box for centering
@@ -84,4 +99,12 @@ export function getProfileDimensions(profileId: string): { width: number; height
   }
 
   return { width: mm(maxX - minX), height: mm(maxY - minY) };
+}
+
+/**
+ * Clear the geometry cache (useful for hot-reload or memory management).
+ */
+export function clearProfileCache(): void {
+  geoCache.forEach((geo) => geo.dispose());
+  geoCache.clear();
 }

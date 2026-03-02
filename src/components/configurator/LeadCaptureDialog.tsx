@@ -10,10 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, Download, Loader2 } from "lucide-react";
+import { Check, Download, Loader2, AlertCircle } from "lucide-react";
 import type { PatioConfig } from "@/types/configurator";
 import { calculateEstimate } from "./QuotePanel";
 import { generateQuotePdf } from "@/lib/generate-quote-pdf";
+import { submitLeadToGHL } from "@/lib/ghl-webhook";
+import { BRAND } from "@/lib/brand-config";
 
 interface LeadCaptureDialogProps {
   open: boolean;
@@ -24,7 +26,9 @@ interface LeadCaptureDialogProps {
 
 export default function LeadCaptureDialog({ open, onOpenChange, config, canvasRef }: LeadCaptureDialogProps) {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -47,7 +51,6 @@ export default function LeadCaptureDialog({ open, onOpenChange, config, canvasRe
 
   const handleDownloadPdf = () => {
     setGenerating(true);
-    // Slight delay to let the spinner render
     setTimeout(() => {
       try {
         const pdf = generateQuotePdf({
@@ -67,19 +70,38 @@ export default function LeadCaptureDialog({ open, onOpenChange, config, canvasRe
     }, 100);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const lead = {
-      ...form,
-      serviceType: 'patios',
-      configJson: config,
-      estimateMin: min,
-      estimateMax: max,
-      estimatedSize: area,
-      submittedAt: new Date().toISOString(),
-    };
-    console.log('Lead submitted:', lead);
-    setSubmitted(true);
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      // Submit to GHL webhook
+      const result = await submitLeadToGHL(form, config, min, max);
+
+      if (!result.success) {
+        console.warn('[Lead] GHL submission had an issue, but continuing flow:', result.error);
+      }
+
+      // Also log locally for debugging
+      const lead = {
+        ...form,
+        serviceType: 'patios',
+        configJson: config,
+        estimateMin: min,
+        estimateMax: max,
+        estimatedSize: area,
+        submittedAt: new Date().toISOString(),
+      };
+      console.log('Lead submitted:', lead);
+
+      setSubmitted(true);
+    } catch (err) {
+      console.error('Lead submission error:', err);
+      setSubmitError('Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const updateField = (key: string, value: string) =>
@@ -95,7 +117,7 @@ export default function LeadCaptureDialog({ open, onOpenChange, config, canvasRe
             </div>
             <h3 className="font-display text-xl font-bold text-foreground">Quote Request Sent!</h3>
             <p className="text-sm text-muted-foreground">
-              The H2 Patios team will be in touch within 24 hours to arrange your free on-site measure.
+              The {BRAND.name} team will be in touch within 24 hours to arrange your free on-site measure.
             </p>
             <div className="bg-secondary rounded-lg p-3 text-xs text-muted-foreground">
               <p>Estimate: <span className="text-primary font-semibold">${min.toLocaleString()} – ${max.toLocaleString()}</span> ex GST</p>
@@ -181,8 +203,22 @@ export default function LeadCaptureDialog({ open, onOpenChange, config, canvasRe
             <span className="text-[10px] text-muted-foreground">{form.jobRequirements.length}/180</span>
           </div>
 
-          <Button type="submit" className="w-full" size="lg">
-            Submit Quote Request
+          {submitError && (
+            <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 rounded-lg p-2">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {submitError}
+            </div>
+          )}
+
+          <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Submitting...
+              </>
+            ) : (
+              'Submit Quote Request'
+            )}
           </Button>
         </form>
       </DialogContent>

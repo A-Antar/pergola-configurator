@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import type { PatioConfig } from "@/types/configurator";
 import { FRAME_COLORS } from "@/types/configurator";
 import { calculateEstimate } from "@/components/configurator/QuotePanel";
+import { BRAND } from "./brand-config";
 
 interface QuotePdfOptions {
   config: PatioConfig;
@@ -40,7 +41,7 @@ export function generateQuotePdf(opts: QuotePdfOptions): jsPDF {
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.text(`Ref: ${ref}  ·  ${now.toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}`, mx, 22);
-  doc.text("Prepared for you by H2 Patios", pw - mx, 22, { align: "right" });
+  doc.text(`Prepared for you by ${BRAND.name}`, pw - mx, 22, { align: "right" });
   y = 36;
 
   // ── 3D Render Image
@@ -162,7 +163,7 @@ export function generateQuotePdf(opts: QuotePdfOptions): jsPDF {
   doc.setFontSize(7);
   doc.setTextColor(120, 120, 120);
   doc.text(`Generated ${now.toLocaleString("en-AU")}  ·  Ref: ${ref}`, mx, ph - 6);
-  doc.text("Powered by H2 Patios CPQ", pw - mx, ph - 6, { align: "right" });
+  doc.text(`Powered by ${BRAND.name} CPQ`, pw - mx, ph - 6, { align: "right" });
 
   return doc;
 }
